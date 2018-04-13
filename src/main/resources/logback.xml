@@ -10,7 +10,7 @@
   <logger name="io.netty" level="warn"/>
   <logger name="io.vertx" level="info"/>
   <logger name="de.fhg.fokus.viaduct.aegis" level="debug"/>
-
+  <logger name="de.fokus.fraunhofer.hopsworks" level="warn"/>
   <root level="debug">
     <appender-ref ref="STDOUT"/>
   </root>

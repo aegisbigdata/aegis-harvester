@@ -10,6 +10,8 @@ import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.UUID;
 
@@ -27,14 +29,17 @@ public class TransformVerticle extends AbstractVerticle {
         JsonArray list = (JsonArray)message.body();
         Iterator<Object> listItr = list.iterator();
         StringBuilder sb = new StringBuilder();
-        sb.append("City,Latitude,Longitude,Temperature\n");
+        sb.append("City,Time,Latitude,Longitude,Temperature\n");
         while(listItr.hasNext()) {
             JsonObject obj = (JsonObject)listItr.next();
             String city = obj.getString("name");
             String latitude = obj.getJsonObject("coord").getDouble("Lat").toString();
             String longitude = obj.getJsonObject("coord").getDouble("Lon").toString();
             String temp = obj.getJsonObject("main").getDouble("temp").toString();
+            Long timeStamp = obj.getLong("dt");
+            String date = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date(timeStamp * 1000L));
             sb.append(city).append(",");
+            sb.append(date).append(",");
             sb.append(latitude).append(",");
             sb.append(longitude).append(",");
             sb.append(temp).append("\n");

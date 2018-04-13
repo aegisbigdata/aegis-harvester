@@ -19,9 +19,12 @@ public class ExportVerticle extends AbstractVerticle {
 
     private void export(Message<Object> message) {
         String file = message.body().toString();
-        String projectID = "1027";
-        String folder = "upload/test_fki";
-        HopsworksAdapter hopsworksAdapter = new HopsworksAdapter();
-        hopsworksAdapter.actionUploadFile(projectID, folder, file);
+        String projectId = config().getJsonObject("aegis").getString("projectId");
+        String folder = config().getJsonObject("aegis").getString("folder");
+        String url = config().getJsonObject("aegis").getString("url");  //test server
+        String email = config().getJsonObject("aegis").getString("user");
+        String password = config().getJsonObject("aegis").getString("password");
+        HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email,password,url);
+        hopsworksAdapter.actionUploadFile(projectId,folder,file);
     }
 }

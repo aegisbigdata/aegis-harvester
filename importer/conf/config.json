@@ -1,0 +1,10 @@
+{
+  "http.port" : 8080,
+
+  "transformer.ip" : "127.0.0.1",
+  "transformer.port" : 8081,
+
+  "owmApiKey": "rv8tb7wv39t67q3489ntv73qtm",
+
+  "pipeId" : "samplePipe"
+}

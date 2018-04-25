@@ -3,7 +3,7 @@
 
   "target.host" : "127.0.0.1",
   "target.port" : 8082,
-  "target.endpoint" : "/aggregate",
+  "target.endpoint" : "/export",
 
-  "fileDir" : "/tmp"
+  "frequencyInMinutes" : 5
 }

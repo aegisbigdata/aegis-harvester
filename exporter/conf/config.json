@@ -7,8 +7,5 @@
     "folder": "upload/test_fki",
     "user": "admin@kth.se",
     "password": "admin"
-  },
-
-  "aggregate" : true,
-  "durationInMinutes" : 1
+  }
 }

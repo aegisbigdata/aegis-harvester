@@ -2,9 +2,12 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import model.Constants;
+import model.ImportRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,16 +79,27 @@ public class MainVerticle extends AbstractVerticle {
 
     private void weatherHandler(RoutingContext context) {
         String bbox = context.request().getParam("bbox");
+        String locationId = context.request().getParam("location");
+
         JsonObject response = new JsonObject();
         context.response().putHeader("Content-Type", "application/json");
-        if(bbox == null) {
-            response.put("message", "Please provide a bounding box (bbox)");
+
+        if (bbox == null && locationId == null) {
+            response.put("message", "Please provide a bounding box (bbox) or location ID (location)");
             context.response().setStatusCode(400);
+        } else if (bbox != null && locationId != null) {
+            response.put("message", "Please provide only one parameter (bbox or location)");
+            context.response().setStatusCode(400);
+        } else if (bbox != null) {
+            vertx.eventBus().send(Constants.MSG_IMPORT, Json.encode(new ImportRequest(Constants.TYPE_BBOX, bbox)));
+            response.put("status", "ok");
+            context.response().setStatusCode(200);
         } else {
-            vertx.eventBus().send(Constants.MSG_IMPORT, bbox);
+            vertx.eventBus().send(Constants.MSG_IMPORT, Json.encode(new ImportRequest(Constants.TYPE_LOCATION, locationId)));
             response.put("status", "ok");
             context.response().setStatusCode(200);
         }
+
         context.response().end(response.encode());
     }
 }

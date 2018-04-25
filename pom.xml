@@ -13,6 +13,7 @@
     <module>importer</module>
     <module>transformer</module>
     <module>exporter</module>
+    <module>aggregator</module>
   </modules>
 
   <properties>

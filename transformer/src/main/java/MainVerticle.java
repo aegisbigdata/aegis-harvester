@@ -73,21 +73,9 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void handleTransformation(RoutingContext context) {
-        String filePath = config().getString("fileDir")
-                + context.getBodyAsJson().getString("pipeId");
-
-        // notify target on creation of a new file
-        vertx.fileSystem().exists(filePath, handler -> {
-            if (handler.succeeded() && !handler.result()) {
-                notifyTargetOfNewFile(filePath);
-            } else if (handler.failed()) {
-                LOG.warn("Failed to check if file [{}] existst: {}", filePath, handler.cause());
-            }
-        });
 
         JsonObject message = new JsonObject();
-        message.put("filePath", filePath);
-        message.put("values", context.getBodyAsJson().getString("values"));
+        message.put("payload", context.getBodyAsJson().getString("payload"));
 
         vertx.eventBus().send("transform", message);
 
@@ -95,29 +83,5 @@ public class MainVerticle extends AbstractVerticle {
                 .setStatusCode(202) // accepted
                 .putHeader("Content-Type", "application/json")
                 .end();
-    }
-
-    private void notifyTargetOfNewFile(String filePath) {
-        JsonObject message = new JsonObject();
-        message.put("pipeId", config().getString("pipeId"));
-        message.put("filePath", filePath);
-
-        Integer port = config().getInteger("target.port");
-        String host = config().getString("target.host");
-        String requestURI = config().getString("target.endpoint");
-
-        WebClient.create(vertx)
-                .post(port, host, requestURI)
-                .sendJson(message, postResult -> {
-                    if (postResult.succeeded()) {
-                        HttpResponse<Buffer> postResponse = postResult.result();
-
-                        if (!(200 <= postResponse.statusCode() && postResponse.statusCode() < 400))
-                            LOG.warn("Callback URL returned status [{}]", postResponse.statusCode());
-
-                    } else {
-                        LOG.warn("POST to [{}] on port [{}] failed: {}", host + requestURI, port, postResult.cause());
-                    }
-                });
     }
 }

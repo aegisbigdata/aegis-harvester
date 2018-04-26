@@ -3,6 +3,8 @@ import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,12 +16,16 @@ public class TransformationVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
 
+    private WebClient webClient;
+
     @Override
     public void start(Future<Void> future) {
+        webClient = WebClient.create(vertx);
+
         vertx.eventBus().consumer("transform", message -> {
 
             JsonObject request = (JsonObject) message.body();
-            JsonArray list = request.getJsonArray("values");
+            JsonArray list = request.getJsonArray("payload");
             Iterator<Object> listItr = list.iterator();
 
             StringBuilder sb = new StringBuilder();
@@ -42,17 +48,30 @@ public class TransformationVerticle extends AbstractVerticle {
                 sb.append(temp).append("\n");
             }
 
-            writeLineToFile(sb.toString());
+            sendLine(sb.toString());
         });
     }
 
-    private void writeLineToFile(String data) {
-        String file = config().getString("filePath");
+    private void sendLine(String payload) {
+        JsonObject message = new JsonObject();
+        message.put("pipeId", config().getString("pipeId"));
+        message.put("payload", payload);
 
-        vertx.fileSystem().writeFile(file, Buffer.buffer(data), result -> {
-            if (result.failed()) {
-                LOG.error("Failed to write line [{}] to file: {}", data, file);
-            }
-        });
+        Integer port = config().getInteger("target.port");
+        String host = config().getString("target.host");
+        String requestURI = config().getString("target.endpoint");
+
+        webClient.post(port, host, requestURI)
+                .sendJson(message, postResult -> {
+                    if (postResult.succeeded()) {
+                        HttpResponse<Buffer> postResponse = postResult.result();
+
+                        if (!(200 <= postResponse.statusCode() && postResponse.statusCode() < 400))
+                            LOG.warn("Callback URL returned status [{}]", postResponse.statusCode());
+
+                    } else {
+                        LOG.warn("POST to [{}] on port [{}] failed: {}", host + requestURI, port, postResult.cause());
+                    }
+                });
     }
 }

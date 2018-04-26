@@ -18,10 +18,7 @@ public class MainVerticle extends AbstractVerticle {
 
         LOG.info("Launching exporter...");
 
-        Future<Void> steps = loadConfig()
-                .compose(this::startServer);
-
-        steps.setHandler(handler -> {
+        startServer().setHandler(handler -> {
             if (handler.succeeded()) {
                 LOG.info("Exporter successfully launched");
             } else {
@@ -30,9 +27,9 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private Future<Void> startServer(JsonObject config) {
+    private Future<Void> startServer() {
         Future<Void> future = Future.future();
-        Integer port = config.getInteger("port");
+        Integer port = config().getInteger("port");
 
         Router router = Router.router(vertx);
         router.get("/export").handler(this::handleExport);
@@ -50,23 +47,16 @@ public class MainVerticle extends AbstractVerticle {
         String email = config().getJsonObject("aegis").getString("user");
         String password = config().getJsonObject("aegis").getString("password");
 
-        String fileParam = config().getString("http.fileParam");
+        String filePath = context.request().getParam("payload");
 
-        HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email,password,url);
-        hopsworksAdapter.actionUploadFile(projectId, folder, context.request().getParam(fileParam));
-    }
-
-    private Future<JsonObject> loadConfig() {
-        Future<JsonObject> future = Future.future();
-
-        ConfigRetriever.create(vertx).getConfig(ar -> {
-            if(ar.failed()) {
-                future.failed();
-            } else {
-                future.complete(ar.result());
+        vertx.executeBlocking(future -> {
+            HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email,password,url);
+            hopsworksAdapter.actionUploadFile(projectId, folder, filePath);
+            future.complete();
+        }, result -> {
+            if (result.failed()) {
+                LOG.info("Failed to export file [{}] to HopsWorks: ", filePath, result.cause());
             }
         });
-
-        return future;
     }
 }

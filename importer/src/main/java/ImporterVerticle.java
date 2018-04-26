@@ -57,11 +57,11 @@ public class ImporterVerticle extends AbstractVerticle {
         }
     }
 
-    private void sendWeatherData(JsonArray values) {
+    private void sendWeatherData(JsonArray payload) {
 
         JsonObject message = new JsonObject();
         message.put("pipeId", config().getString("pipeId"));
-        message.put("values", values);
+        message.put("payload", payload);
 
         Integer port = config().getInteger("target.port");
         String host = config().getString("target.host");

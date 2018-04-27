@@ -1,3 +1,4 @@
+import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
@@ -21,24 +22,49 @@ public class MainVerticle extends AbstractVerticle {
 
         webClient = WebClient.create(vertx);
 
-        startServer().setHandler(handler -> {
+        Future<Void> steps = loadConfig()
+                .compose(this::startServer);
+
+        steps.setHandler(handler -> {
             if (handler.succeeded()) {
                 LOG.info("Aggregator successfully launched");
             } else {
+                handler.cause().printStackTrace();
                 LOG.error("Failed to launch aggregator: " + handler.cause());
             }
         });
     }
 
-    private Future<Void> startServer() {
+    private Future<JsonObject> loadConfig() {
+        Future<JsonObject> future = Future.future();
+
+        ConfigRetriever.create(vertx).getConfig(handler -> {
+            if(handler.succeeded()) {
+                future.complete(handler.result());
+            } else {
+                future.fail("Failed to load config: " + handler.cause());
+            }
+        });
+
+        return future;
+    }
+
+    private Future<Void> startServer(JsonObject config) {
         Future<Void> future = Future.future();
-        Integer port = config().getInteger("port");
+        Integer port = config.getInteger("http.port");
 
         Router router = Router.router(vertx);
         router.post("/aggregate").handler(this::aggregationHandler);
 
-        vertx.createHttpServer().requestHandler(router::accept).listen(port);
-        LOG.info("Listening on port " + port.toString());
+        vertx.createHttpServer().requestHandler(router::accept)
+                .listen(port, handler -> {
+                    if (handler.succeeded()) {
+                        future.complete();
+                        LOG.info("Listening on port " + port.toString());
+                    } else {
+                        future.fail("Failed to start server: " + handler.cause());
+                    }
+                });
 
         return future;
     }

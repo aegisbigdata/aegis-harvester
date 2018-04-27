@@ -2,7 +2,6 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -13,6 +12,10 @@ import model.Constants;
 import model.ImportRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.atomic.AtomicLong;
+
+import static model.Constants.TYPE_BBOX;
 
 public class ImporterVerticle extends AbstractVerticle {
 
@@ -25,36 +28,48 @@ public class ImporterVerticle extends AbstractVerticle {
         vertx.eventBus().consumer(Constants.MSG_IMPORT, this::getWeatherData);
 
         webClient = WebClient.create(vertx);
+        future.complete();
     }
 
     private void getWeatherData(Message<String> message) {
+        ImportRequest request = Json.decodeValue(message.body(), ImportRequest.class);
 
-        try {
-            ImportRequest request = Json.decodeValue(message.body(), ImportRequest.class);
+        String apiKey = config().getString("owmApiKey");
+        String url = "api.openweathermap.org/data/2.5/box/city";
 
-            String apiKey = config().getString("owmApiKey");
-            String url = "api.openweathermap.org/data/2.5/box/city";
-            String params = "?appid=" + apiKey + "&units=metric";
+        StringBuilder params = new StringBuilder("?appid=")     // StringBuilder so result is permitted in lambda expression
+                .append(apiKey)
+                .append("&units=metric");
 
-            params += Constants.TYPE_BBOX.equals(request.getType())
-                    ? "&bbox=" + request.getValue()
-                    : "&id=" + request.getValue();
-
-            webClient
-                    .get(url, params)
-                    .as(BodyCodec.jsonObject())
-                    .send(ar -> {
-                        if (ar.succeeded()) {
-                            HttpResponse<JsonObject> response = ar.result();
-                            JsonObject body = response.body();
-                            sendWeatherData(body.getJsonArray("list"));
-                        } else {
-                            LOG.error("Something went wrong " + ar.cause().getMessage());
-                        }
-                    });
-        } catch (DecodeException e) {
-            LOG.warn("Received invalid request: {}", message.body());
+        if (TYPE_BBOX.equals(request.getType())) {
+            params.append("&bbox=").append(request.getValue());
+        } else {
+            params.append("&id=").append(request.getValue());
         }
+
+        long totalTicks = computeNumberOfTicks(request);
+        AtomicLong triggerCounter = new AtomicLong(0);  // atomic so variable is permitted in lambda expression
+
+        vertx.setPeriodic(computeNumberOfTicks(request), id -> {
+            if (triggerCounter.get() == totalTicks) {
+                vertx.cancelTimer(id);
+                message.reply(request.getPipeId());     // reply so ID is removed from running job list
+            } else {
+                triggerCounter.addAndGet(1);
+                webClient
+                        .get(url, params.toString())
+                        .as(BodyCodec.jsonObject())
+                        .send(ar -> {
+                            if (ar.succeeded()) {
+                                HttpResponse<JsonObject> response = ar.result();
+                                JsonObject body = response.body();
+                                sendWeatherData(body.getJsonArray("list"));
+                            } else {
+                                LOG.error("Something went wrong " + ar.cause().getMessage());
+                            }
+                        });
+            }
+        });
     }
 
     private void sendWeatherData(JsonArray payload) {
@@ -79,5 +94,20 @@ public class ImporterVerticle extends AbstractVerticle {
                         LOG.warn("POST to [{}] on port [{}] failed: {}", host + requestURI, port, postResult.cause());
                     }
                 });
+    }
+
+    private long computeNumberOfTicks(ImportRequest request) {
+
+        // sanitize inputs
+        int durationInHours = request.getDurationInHours() >= 0
+                ? request.getDurationInHours()
+                : 0;
+        int frequencyInMinutes = request.getFrequencyInMinutes() >= 0
+                ? request.getFrequencyInMinutes()
+                : 0;
+
+        return durationInHours > 0
+                ? frequencyInMinutes / durationInHours * 60
+                : 1;
     }
 }

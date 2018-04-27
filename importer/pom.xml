@@ -13,7 +13,7 @@
     <artifactId>importer</artifactId>
 
     <properties>
-        <main.verticle>de.fhg.fokus.viaduct.consus.aegis.weatherdemo.importer.MainVerticle</main.verticle>
+        <main.verticle>MainVerticle</main.verticle>
     </properties>
 
     <build>

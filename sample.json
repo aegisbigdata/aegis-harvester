@@ -1,0 +1,7 @@
+{
+  "pipeId" : "samplePipe",
+  "type" : "bbox",
+  "value" : "12345",
+  "durationInHours" : 24,
+  "frequencyInMinutes" : 60
+}

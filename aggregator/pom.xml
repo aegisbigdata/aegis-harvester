@@ -11,5 +11,17 @@
 
     <artifactId>aggregator</artifactId>
 
+    <properties>
+        <main.verticle>MainVerticle</main.verticle>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <!-- plugin to create a `fat-jar` -->
+                <artifactId>maven-shade-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

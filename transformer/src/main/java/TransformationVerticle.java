@@ -50,6 +50,8 @@ public class TransformationVerticle extends AbstractVerticle {
 
             sendLine(sb.toString());
         });
+
+        future.complete();
     }
 
     private void sendLine(String payload) {

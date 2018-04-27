@@ -1,3 +1,4 @@
+import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
@@ -20,8 +21,9 @@ public class MainVerticle extends AbstractVerticle {
 
         LOG.info("Launching transformer...");
 
-        Future<Void> steps = bootstrapVerticle()
-                .compose(abc -> startServer());
+        Future<Void> steps = loadConfig()
+                .compose(this::bootstrapVerticle)
+                .compose(this::startServer);
 
         steps.setHandler(handler -> {
             if (handler.succeeded()) {
@@ -32,16 +34,30 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private Future<Void> bootstrapVerticle() {
-        Future<Void> future = Future.future();
+    private Future<JsonObject> loadConfig() {
+        Future<JsonObject> future = Future.future();
+
+        ConfigRetriever.create(vertx).getConfig(handler -> {
+            if(handler.succeeded()) {
+                future.complete(handler.result());
+            } else {
+                future.fail("Failed to load config: " + handler.cause());
+            }
+        });
+
+        return future;
+    }
+
+    private Future<JsonObject> bootstrapVerticle(JsonObject config) {
+        Future<JsonObject> future = Future.future();
 
         DeploymentOptions options = new DeploymentOptions()
-                .setConfig(config())
+                .setConfig(config)
                 .setWorker(true);
 
         vertx.deployVerticle(TransformationVerticle.class.getName(), options, handler -> {
             if (handler.succeeded()) {
-                future.complete();
+                future.complete(config);
             } else {
                 future.fail("Failed to deploy transformation verticle: " + handler.cause());
             }
@@ -50,16 +66,14 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private Future<Void> startServer() {
+    private Future<Void> startServer(JsonObject config) {
         Future<Void> future = Future.future();
-
-        Integer port = config().getInteger("http.port");
-        HttpServer server = vertx.createHttpServer();
+        Integer port = config.getInteger("http.port");
 
         Router router = Router.router(vertx);
         router.get("/transform").handler(this::handleTransformation);
 
-        server.requestHandler(router::accept)
+        vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
                     if (handler.succeeded()) {
                         future.complete();

@@ -1,10 +1,10 @@
-import de.fokus.fraunhofer.hopsworks.adapter.HopsworksAdapter;
 import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +34,7 @@ public class MainVerticle extends AbstractVerticle {
         Future<JsonObject> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
-            if(handler.succeeded()) {
+            if (handler.succeeded()) {
                 future.complete(handler.result());
             } else {
                 future.fail("Failed to load config: " + handler.cause());
@@ -49,7 +49,8 @@ public class MainVerticle extends AbstractVerticle {
         Integer port = config.getInteger("http.port");
 
         Router router = Router.router(vertx);
-        router.get("/export").handler(this::handleExport);
+        router.route().handler(BodyHandler.create());
+        router.post("/export").handler(this::handleExport);
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -65,23 +66,23 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void handleExport(RoutingContext context) {
-        // TODO load proper config
-        String projectId = config().getJsonObject("aegis").getString("projectId");
-        String folder = config().getJsonObject("aegis").getString("folder");
-        String url = config().getJsonObject("aegis").getString("url");  //test server
-        String email = config().getJsonObject("aegis").getString("user");
-        String password = config().getJsonObject("aegis").getString("password");
-
-        String filePath = context.request().getParam("payload");
-
-        vertx.executeBlocking(future -> {
-            HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email,password,url);
-            hopsworksAdapter.actionUploadFile(projectId, folder, filePath);
-            future.complete();
-        }, result -> {
-            if (result.failed()) {
-                LOG.info("Failed to export file [{}] to HopsWorks: ", filePath, result.cause());
-            }
-        });
+//        // TODO load proper config
+//        String projectId = config().getJsonObject("aegis").getString("projectId");
+//        String folder = config().getJsonObject("aegis").getString("folder");
+//        String url = config().getJsonObject("aegis").getString("url");  //test server
+//        String email = config().getJsonObject("aegis").getString("user");
+//        String password = config().getJsonObject("aegis").getString("password");
+//
+//        String filePath = context.request().getParam("payload");
+//
+//        vertx.executeBlocking(future -> {
+//            HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email,password,url);
+//            hopsworksAdapter.actionUploadFile(projectId, folder, filePath);
+//            future.complete();
+//        }, result -> {
+//            if (result.failed()) {
+//                LOG.info("Failed to export file [{}] to HopsWorks: ", filePath, result.cause());
+//            }
+//        });
     }
 }

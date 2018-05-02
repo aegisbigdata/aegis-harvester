@@ -9,14 +9,6 @@ public class ImportRequest {
     private Integer durationInHours;
     private Integer frequencyInMinutes;
 
-    public ImportRequest(String pipeId, String type, String value, Integer durationInHours, Integer frequencyInMinutes) {
-        this.pipeId = pipeId;
-        this.type = type;
-        this.value = value;
-        this.durationInHours = durationInHours;
-        this.frequencyInMinutes = frequencyInMinutes;
-    }
-
     public String getPipeId() {
         return pipeId;
     }
@@ -55,5 +47,16 @@ public class ImportRequest {
 
     public void setFrequencyInMinutes(Integer frequencyInMinutes) {
         this.frequencyInMinutes = frequencyInMinutes;
+    }
+
+    @Override
+    public String toString() {
+        return "ImportRequest{" +
+                "pipeId='" + pipeId + '\'' +
+                ", type='" + type + '\'' +
+                ", value='" + value + '\'' +
+                ", durationInHours=" + durationInHours +
+                ", frequencyInMinutes=" + frequencyInMinutes +
+                '}';
     }
 }

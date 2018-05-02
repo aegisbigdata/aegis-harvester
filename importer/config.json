@@ -1,7 +1,0 @@
-{
-  "http.port" : 9000,
-  "target.host" : "127.0.0.1",
-  "target.port" : 8081,
-  "target.endpoint" : "/transform",
-  "owmApiKey": "rv8tb7wv39t67q3489ntv73qtm"
-}

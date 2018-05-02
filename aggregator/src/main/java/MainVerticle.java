@@ -7,6 +7,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.handler.BodyHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +40,7 @@ public class MainVerticle extends AbstractVerticle {
         Future<JsonObject> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
-            if(handler.succeeded()) {
+            if (handler.succeeded()) {
                 future.complete(handler.result());
             } else {
                 future.fail("Failed to load config: " + handler.cause());
@@ -54,6 +55,7 @@ public class MainVerticle extends AbstractVerticle {
         Integer port = config.getInteger("http.port");
 
         Router router = Router.router(vertx);
+        router.route().handler(BodyHandler.create());
         router.post("/aggregate").handler(this::aggregationHandler);
 
         vertx.createHttpServer().requestHandler(router::accept)

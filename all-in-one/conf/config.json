@@ -1,5 +1,5 @@
 {
-  "port": 8080,
+  "port": 8085,
   "owmApiKey": "rv8tb7wv39t67q3489ntv73qtm",
   "tempFilePath": "/home/fritz/tmp",
   "aegis": {

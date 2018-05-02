@@ -1,5 +1,5 @@
 {
-  "http.port" : 9000,
+  "http.port" : 8080,
   "target.host" : "127.0.0.1",
   "target.port" : 8081,
   "target.endpoint" : "/transform",

@@ -2,11 +2,13 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
 import model.Constants;
 import model.ImportRequest;
 import org.slf4j.Logger;
@@ -45,7 +47,7 @@ public class MainVerticle extends AbstractVerticle {
         Future<JsonObject> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
-            if(handler.succeeded()) {
+            if (handler.succeeded()) {
                 future.complete(handler.result());
             } else {
                 future.fail("Failed to load config: " + handler.cause());
@@ -80,8 +82,9 @@ public class MainVerticle extends AbstractVerticle {
         Integer port = config.getInteger("http.port");
 
         Router router = Router.router(vertx);
+        router.route().handler(BodyHandler.create());
         router.get("/running").handler(this::runningJobshandler);
-        router.get("/weather").handler(this::weatherHandler);
+        router.post("/weather").handler(this::weatherHandler);
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -111,7 +114,7 @@ public class MainVerticle extends AbstractVerticle {
         context.response().putHeader("Content-Type", "application/json");
 
         try {
-            ImportRequest request = Json.decodeValue(context.getBody(), ImportRequest.class);
+            ImportRequest request = Json.decodeValue(context.getBody().toString(), ImportRequest.class);
 
             if (request.getPipeId() == null || runningJobs.contains(request.getPipeId())) {
                 response.put("message", "Please provide a unique pipe ID (pipeId)");
@@ -125,13 +128,19 @@ public class MainVerticle extends AbstractVerticle {
             } else {
                 runningJobs.add(request.getPipeId());
 
-                vertx.eventBus().send(Constants.MSG_IMPORT, context.getBodyAsJson(), reply ->
-                        runningJobs.remove(reply.result().body().toString()));
+                DeliveryOptions options = new DeliveryOptions();
+                options.setSendTimeout(request.getFrequencyInMinutes() * 60000 + 3000); // allow a reply to be late 30 seconds
+
+                vertx.eventBus().send(Constants.MSG_IMPORT, context.getBodyAsString(), reply -> {
+                    if (reply.succeeded())
+                        runningJobs.remove(reply.result().body().toString());
+                });
 
                 response.put("status", "ok");
                 context.response().setStatusCode(200);
             }
         } catch (DecodeException e) {
+            e.printStackTrace();
             response.put("message", "Invalid JSON provided");
             context.response().setStatusCode(400);
         }

@@ -2,6 +2,8 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -56,7 +58,9 @@ public class MainVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
-        router.post("/aggregate").handler(this::aggregationHandler);
+        router.post("/aggregate").handler(context ->
+                aggregationHandler(context, config)
+        );
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -71,35 +75,40 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private void aggregationHandler(RoutingContext context) {
+    private void aggregationHandler(RoutingContext context, JsonObject config) {
+        LOG.debug("Received request with body {}", context.getBodyAsString());
         JsonObject message = context.getBodyAsJson();
 
-        String filePath = config().getString("fileDir")
-                + message.getString("pipeId");
+        String pipeId = message.getString("pipeId");
+        String filePath = config.getString("fileDir") + "/"
+                + pipeId;
 
         vertx.fileSystem().exists(filePath, handler ->
-                vertx.setTimer(config().getInteger("frequencyInMinutes") * 60000, timer -> {
-                    exportFile(filePath);
-                    cleanUp(filePath);
+                vertx.setTimer(config.getInteger("frequencyInMinutes") * 60000, timer -> {
+                    exportFile(pipeId, filePath, config);
                 }));
 
         String data = message.getString("payload");
 
-        vertx.fileSystem().writeFile(filePath, Buffer.buffer(data), result -> {
-            if (result.failed()) {
-                LOG.error("Failed to write line [{}] to file: {}", data, filePath);
+        vertx.fileSystem().open(filePath, new OpenOptions().setAppend(true), ar -> {
+            if (ar.succeeded()) {
+                AsyncFile ws = ar.result();
+                Buffer chunk = Buffer.buffer(data);
+                ws.write(chunk);
+            } else {
+                LOG.error("Could not open file [{}]", filePath);
             }
         });
     }
 
-    private void exportFile(String filePath) {
+    private void exportFile(String pipeId, String filePath, JsonObject config) {
         JsonObject message = new JsonObject();
-        message.put("pipeId", config().getString("pipeId"));
+        message.put("pipeId", config.getString("pipeId"));
         message.put("payload", filePath);
 
-        Integer port = config().getInteger("target.port");
-        String host = config().getString("target.host");
-        String requestURI = config().getString("target.endpoint");
+        Integer port = config.getInteger("target.port");
+        String host = config.getString("target.host");
+        String requestURI = config.getString("target.endpoint");
 
         webClient.post(port, host, requestURI)
                 .sendJson(message, postResult -> {
@@ -113,12 +122,5 @@ public class MainVerticle extends AbstractVerticle {
                         LOG.warn("POST to [{}] on port [{}] failed: {}", host + requestURI, port, postResult.cause());
                     }
                 });
-    }
-
-    private void cleanUp(String filePath) {
-        vertx.fileSystem().delete(filePath, handler -> {
-            if (handler.failed())
-                LOG.warn("Failed to clean up file [{}] : ", filePath, handler.cause());
-        });
     }
 }

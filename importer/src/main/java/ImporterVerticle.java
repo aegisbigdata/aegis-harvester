@@ -1,18 +1,27 @@
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpResponse;
-import io.vertx.ext.web.client.WebClient;
-import io.vertx.ext.web.codec.BodyCodec;
 import model.Constants;
 import model.ImportRequest;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static model.Constants.TYPE_BBOX;
@@ -21,13 +30,13 @@ public class ImporterVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(ImporterVerticle.class);
 
-    private WebClient webClient;
+    private HttpClient httpClient;
 
     @Override
     public void start(Future<Void> future) {
         vertx.eventBus().consumer(Constants.MSG_IMPORT, this::getWeatherData);
 
-        webClient = WebClient.create(vertx);
+        httpClient = HttpClients.createDefault();
         future.complete();
     }
 
@@ -35,74 +44,121 @@ public class ImporterVerticle extends AbstractVerticle {
         ImportRequest request = Json.decodeValue(message.body(), ImportRequest.class);
 
         String apiKey = config().getString("owmApiKey");
-        String url = "api.openweathermap.org";
+        String url = "http://api.openweathermap.org";
 
         StringBuilder params = new StringBuilder("/data/2.5/");     // StringBuilder so result is permitted in lambda expression
 
         if (TYPE_BBOX.equals(request.getType())) {
             params.append("box/city?bbox=").append(request.getValue());
         } else {
-            params.append("weather/?id=").append(request.getValue());
+            params.append("weather?id=").append(request.getValue());
         }
 
-        params.append("&appid=").append(apiKey).append("&units=metric");
-        LOG.debug("Request: {}", url + params.toString());
+        params.append("&APPID=").append(apiKey).append("&units=metric");
 
         long totalTicks = computeNumberOfTicks(request);
         AtomicLong triggerCounter = new AtomicLong(0);  // atomic so variable is permitted in lambda expression
 
+        getAndPostOwmApiData(url + params.toString(), request);   // periodic timer waits before first request
         vertx.setPeriodic(request.getFrequencyInMinutes() * 60000, id -> {
             if (triggerCounter.get() == totalTicks) {
                 vertx.cancelTimer(id);
-                message.reply(request.getPipeId());     // reply so ID is removed from running job list
+                removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
+                LOG.debug("Pipe with ID [{}] done", request.getPipeId());
             } else {
                 triggerCounter.addAndGet(1);
-                webClient
-                        .get(url, params.toString())
-                        .as(BodyCodec.jsonObject())
-                        .send(ar -> {
-                            if (ar.succeeded()) {
-                                HttpResponse<JsonObject> response = ar.result();
-                                JsonObject body = response.body();
-                                sendWeatherData(request.getPipeId(), body.getJsonArray("list"));
-                            } else {
-                                LOG.error("Something went wrong " + ar.cause().getMessage());
-                            }
-                        });
+                getAndPostOwmApiData(url + params.toString(), request);
             }
         });
     }
 
-    private void handleBboxData(JsonObject body) {
+    private void getAndPostOwmApiData(String url, ImportRequest request) {
+        LOG.debug("Request URL: {}", url);
 
+        vertx.executeBlocking(future -> {
+            HttpGet httpPost = new HttpGet(url);
+
+            try {
+                HttpResponse response = httpClient.execute(httpPost);
+                int status = response.getStatusLine().getStatusCode();
+                String body = EntityUtils.toString(response.getEntity());
+
+                LOG.debug("OWM API Response ({}): {}", response.getStatusLine().getStatusCode(), body);
+
+                if (status < 200 || status > 400) {
+                    LOG.warn("OWM API request returned status [{}]", status);
+                    future.fail("Bad status code: " + status);
+                } else {
+                    List<Future> sendFutures = new ArrayList<>();
+
+                    if (TYPE_BBOX.equals(request.getType())) {
+                        for (Object obj : new JsonArray(body)) {
+                            sendFutures.add(sendWeatherData(request.getPipeId(), (JsonObject) obj));
+                        }
+                    } else {
+                        sendFutures.add(sendWeatherData(request.getPipeId(), new JsonObject(body)));
+                    }
+
+                    CompositeFuture.all(sendFutures).setHandler(handler -> {
+                        if (handler.succeeded()) {
+                            future.complete();
+                        } else {
+                            future.fail("At least one piece of data could not be sent");
+                        }
+                    });
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                LOG.warn("GET to OWM API failed: {}", e.getMessage());
+                future.fail("GET to OWM API failed: " + e.getMessage());
+            }
+        }, result -> {
+            if (result.failed())
+                LOG.debug("Importing weather data from URL [{}] failed: {}", url, result.cause());
+        });
     }
 
-    private void handleLocationIdData(JsonObject body) {
+    private Future<Void> sendWeatherData(String pipeId, JsonObject payload) {
+        Future<Void> future = Future.future();
 
-    }
-
-    private void sendWeatherData(String pipeId, JsonArray payload) {
+        String url = "http://"
+                + config().getString("target.host") + ":"
+                + config().getInteger("target.port")
+                + config().getString("target.endpoint");
 
         JsonObject message = new JsonObject();
         message.put("pipeId", pipeId);
         message.put("payload", payload);
 
-        Integer port = config().getInteger("target.port");
-        String host = config().getString("target.host");
-        String requestURI = config().getString("target.endpoint");
+        vertx.executeBlocking(handler -> {
+            try {
+                HttpPost postRequest = new HttpPost(url);
 
-        webClient.post(port, host, requestURI)
-                .sendJson(message, postResult -> {
-                    if (postResult.succeeded()) {
-                        HttpResponse<Buffer> postResponse = postResult.result();
+                HttpEntity entity = new ByteArrayEntity(message.encode().getBytes("UTF-8"));
+                postRequest.setEntity(entity);
 
-                        if (!(200 <= postResponse.statusCode() && postResponse.statusCode() < 400))
-                            LOG.warn("Callback URL returned status [{}]", postResponse.statusCode());
+                HttpResponse response = httpClient.execute(postRequest);
+                int status = response.getStatusLine().getStatusCode();
 
-                    } else {
-                        LOG.warn("POST to [{}] on port [{}] failed: {}", host + requestURI, port, postResult.cause());
-                    }
-                });
+                if (status < 200 || status > 400) {
+                    LOG.warn("POST request returned status [{}]", status);
+                    handler.fail("Bad status code: " + status);
+                } else {
+                    handler.complete();
+                }
+            } catch (IOException e) {
+                handler.fail("POST request to [{}] failed: " + e.getMessage());
+            }
+        }, res -> {
+            if (res.succeeded()) {
+                future.complete();
+            } else {
+                LOG.debug("POST request to [{}] returned [{}]", url, res.result());
+                future.fail(res.cause());
+            }
+        });
+
+        return future;
     }
 
     private long computeNumberOfTicks(ImportRequest request) {
@@ -118,5 +174,19 @@ public class ImporterVerticle extends AbstractVerticle {
         return durationInHours > 0
                 ? (durationInHours * 60) / frequencyInMinutes
                 : 1;
+    }
+
+    private void removeJobFromFile(String filePath, String jobId) {
+        vertx.fileSystem().readFile(filePath, readHandler -> {
+            if (readHandler.succeeded()) {
+                String content = readHandler.result().toString().replace(jobId + "\n", "");
+                vertx.fileSystem().writeFile(filePath, Buffer.buffer(content), writeHandler -> {
+                   if (writeHandler.failed())
+                       LOG.warn("Could not delete job [{}] from file [{}]: {}", jobId, filePath, writeHandler.cause());
+                });
+            } else {
+                LOG.warn("File [{}] does not exist, skipping deletion", filePath);
+            }
+        });
     }
 }

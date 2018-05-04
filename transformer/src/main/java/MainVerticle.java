@@ -93,7 +93,8 @@ public class MainVerticle extends AbstractVerticle {
         LOG.debug("Received request with body {}", context.getBodyAsString());
 
         JsonObject message = new JsonObject();
-        message.put("payload", context.getBodyAsJson().getString("payload"));
+        message.put("pipeId", context.getBodyAsJson().getString("pipeId"));
+        message.put("payload", context.getBodyAsJson().getJsonObject("payload"));
 
         vertx.eventBus().send("transform", message);
 

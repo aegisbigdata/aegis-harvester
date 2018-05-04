@@ -2,7 +2,9 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
-import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.AsyncFile;
+import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
@@ -15,16 +17,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-import static model.Constants.TYPE_BBOX;
-import static model.Constants.TYPE_LOCATION;
+import static model.Constants.*;
 
 public class MainVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
-
-    private final List<String> runningJobs = new ArrayList<>();
 
     @Override
     public void start() {
@@ -83,8 +83,10 @@ public class MainVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
-        router.get("/running").handler(this::runningJobshandler);
-        router.post("/weather").handler(this::weatherHandler);
+        router.get("/running").handler(context ->
+                runningJobshandler(context, config));
+        router.post("/weather").handler(context ->
+                weatherHandler(context, config));
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -99,22 +101,42 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private void runningJobshandler(RoutingContext context) {
+    private void runningJobshandler(RoutingContext context, JsonObject config) {
+        String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
+
         JsonObject response = new JsonObject();
-        response.put("running", runningJobs);
+
+        getRunningJobsFromFile(jobFile).setHandler(handler -> {
+            if (handler.succeeded()) {
+                context.response().setStatusCode(200);
+                response.put("running", handler.result());
+            } else {
+                context.response().setStatusCode(500);
+            }
+        });
 
         context.response().setStatusCode(200);
         context.response().putHeader("Content-Type", "application/json");
         context.response().end(response.encode());
     }
 
-    private void weatherHandler(RoutingContext context) {
+    private void weatherHandler(RoutingContext context, JsonObject config) {
+        String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
 
         JsonObject response = new JsonObject();
         context.response().putHeader("Content-Type", "application/json");
 
         try {
             ImportRequest request = Json.decodeValue(context.getBody().toString(), ImportRequest.class);
+
+            List<String> runningJobs = new ArrayList<>();
+            getRunningJobsFromFile(jobFile).setHandler(handler -> {
+               if (handler.succeeded()) {
+                   runningJobs.addAll(handler.result());
+               } else {
+                   LOG.warn("Could not retrieve running jobs, collisions may occur");
+               }
+            });
 
             if (request.getPipeId() == null || runningJobs.contains(request.getPipeId())) {
                 response.put("message", "Please provide a unique pipe ID (pipeId)");
@@ -126,18 +148,11 @@ public class MainVerticle extends AbstractVerticle {
                 response.put("message", "Frequency lower than total duration");
                 context.response().setStatusCode(400);
             } else {
-                runningJobs.add(request.getPipeId());
+                vertx.eventBus().send(Constants.MSG_IMPORT, context.getBodyAsString());
 
-                DeliveryOptions options = new DeliveryOptions();
-                options.setSendTimeout(request.getFrequencyInMinutes() * 60000 + 3000); // allow a reply to be late 30 seconds
-
-                vertx.eventBus().send(Constants.MSG_IMPORT, context.getBodyAsString(), reply -> {
-                    if (reply.succeeded())
-                        runningJobs.remove(reply.result().body().toString());
-                });
-
+                writeJobToFile(jobFile, request.getPipeId());
                 response.put("status", "ok");
-                context.response().setStatusCode(200);
+                context.response().setStatusCode(202);
             }
         } catch (DecodeException e) {
             e.printStackTrace();
@@ -146,5 +161,33 @@ public class MainVerticle extends AbstractVerticle {
         }
 
         context.response().end(response.encode());
+    }
+
+    private Future<List<String>> getRunningJobsFromFile(String filePath) {
+        Future<List<String>> runningJobs = Future.future();
+
+        vertx.fileSystem().readFile(filePath, readHandler -> {
+            if (readHandler.succeeded()) {
+                String content = readHandler.result().toString();
+                runningJobs.complete(Arrays.asList(content.split(System.lineSeparator())));
+            } else {
+                LOG.warn("Cannot read jobs, file [{}] does not exist", filePath);
+                runningJobs.fail("File " + filePath + "does not exist");
+            }
+        });
+
+        return runningJobs;
+    }
+
+    private void writeJobToFile(String filePath, String jobId) {
+        vertx.fileSystem().open(filePath, new OpenOptions().setAppend(true), ar -> {
+            if (ar.succeeded()) {
+                AsyncFile ws = ar.result();
+                Buffer chunk = Buffer.buffer(jobId + "\n");
+                ws.write(chunk);
+            } else {
+                LOG.error("Could not open file [{}]", filePath);
+            }
+        });
     }
 }

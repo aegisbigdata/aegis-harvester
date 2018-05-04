@@ -1,7 +1,10 @@
 {
   "http.port" : 8080,
+  "tmpDir" : "/tmp"
+,
   "target.host" : "127.0.0.1",
   "target.port" : 8081,
   "target.endpoint" : "/transform",
-  "owmApiKey": "rv8tb7wv39t67q3489ntv73qtm"
+
+  "owmApiKey": "f8d40f27f1a223e18eb161fbe7dbcab6"
 }

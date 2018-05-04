@@ -6,5 +6,5 @@
   "target.endpoint" : "/export",
 
   "fileDir" : "/tmp",
-  "frequencyInMinutes" : 5
+  "frequencyInMinutes" : 3
 }

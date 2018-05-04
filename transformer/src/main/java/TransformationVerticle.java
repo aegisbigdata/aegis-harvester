@@ -25,38 +25,46 @@ public class TransformationVerticle extends AbstractVerticle {
         vertx.eventBus().consumer("transform", message -> {
 
             JsonObject request = (JsonObject) message.body();
-            JsonArray list = request.getJsonArray("payload");
-            Iterator<Object> listItr = list.iterator();
+            String pipeId = request.getString("pipeId");
+            JsonObject payload = request.getJsonObject("payload");
+
+            LOG.debug("Transforming payload {}", payload.encode());
 
             StringBuilder sb = new StringBuilder();
-            sb.append("City,Time,Latitude,Longitude,Temperature\n");
+//            sb.append("City,Time,Latitude,Longitude,Temperature\n");
 
-            while (listItr.hasNext()) {
-                JsonObject obj = (JsonObject) listItr.next();
+            String city = payload.getString("name");
 
-                String city = obj.getString("name");
-                String latitude = obj.getJsonObject("coord").getDouble("Lat").toString();
-                String longitude = obj.getJsonObject("coord").getDouble("Lon").toString();
-                String temp = obj.getJsonObject("main").getDouble("temp").toString();
-                Long timeStamp = obj.getLong("dt");
-                String date = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date(timeStamp * 1000L));
+            // keys have different case depending on request type (bbox vs locationId)
+            Double latitude = payload.getJsonObject("coord").getDouble("Lat") != null
+                    ? payload.getJsonObject("coord").getDouble("Lat")
+                    : payload.getJsonObject("coord").getDouble("lat");
 
-                sb.append(city).append(",");
-                sb.append(date).append(",");
-                sb.append(latitude).append(",");
-                sb.append(longitude).append(",");
-                sb.append(temp).append("\n");
-            }
+            Double longitude = payload.getJsonObject("coord").getDouble("Lon") != null
+                    ? payload.getJsonObject("coord").getDouble("Lon")
+                    : payload.getJsonObject("coord").getDouble("lon");
 
-            sendLine(sb.toString());
+            String temp = payload.getJsonObject("main").getDouble("temp").toString();
+            Long timeStamp = payload.getLong("dt");
+            String date = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date(timeStamp * 1000L));
+
+            sb.append(city).append(",");
+            sb.append(date).append(",");
+            sb.append(latitude).append(",");
+            sb.append(longitude).append(",");
+            sb.append(temp).append("\n");
+
+            sendLine(pipeId, sb.toString());
         });
 
         future.complete();
     }
 
-    private void sendLine(String payload) {
+    private void sendLine(String pipeId, String payload) {
+        LOG.debug("Sending line [{}]", payload);
+
         JsonObject message = new JsonObject();
-        message.put("pipeId", config().getString("pipeId"));
+        message.put("pipeId", pipeId);
         message.put("payload", payload);
 
         Integer port = config().getInteger("target.port");

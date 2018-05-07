@@ -4,16 +4,7 @@ Periodically Fetches data from the [OpenWeatherMap API](https://openweathermap.o
 
 ## Setup
 
-1. Install dependency Hopsworks Data Connector
-
-    ```
-    $ git clone https://github.com/aegisbigdata/hopsworks-data-connector.git
-    $ cd hopsworks-data-connector
-    $ mvn install
-    $ mvn install:install-file -Dfile=target/hopsworks-data-connector-1.0-SNAPSHOT.jar -DpomFile=pom.xml 
-    ```
-
-2. Install importer
+1. Install importer
     * Clone repository
     * Navigate into the cloned directory
     * Copy the sample configuration
@@ -32,10 +23,10 @@ Periodically Fetches data from the [OpenWeatherMap API](https://openweathermap.o
         |target.endpoint| The relative URI of the service the importer will push it's data to |
         |owmApiKey| Your OpenWeatherMap API key |
 
-3. Start the application
+2. Start the application
 
     ```
-    $ mvn package exec:java
+    $ mvn package && java -jar target/importer-fat.jar
     ```
 
 ## API
@@ -51,7 +42,7 @@ containing a JSON body with the data shown in the table below. All values are ma
 |pipeId| Unique value identifying the job |
 |type| Either `bbox` or `location` |
 |value| Either the bbox coordinates or a location ID |
-|durationInHours| How long the pipeline should run for, in hours. A value < 1 will run the pipeline exactly once. |
+|durationInHours| How long the pipeline should run for, in hours. A value < 1 will make the pipeline run exactly once. |
 |frequencyInMinutes| The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. |
 
 A frequency higher than the duration (for durations > 0) is not allowed.

@@ -58,18 +58,23 @@ public class ImporterVerticle extends AbstractVerticle {
 
         long totalTicks = computeNumberOfTicks(request);
         AtomicLong triggerCounter = new AtomicLong(0);  // atomic so variable is permitted in lambda expression
+        LOG.debug("Importing [{}] times for pipe with ID [{}]", totalTicks, request.getPipeId());
 
         getAndPostOwmApiData(url + params.toString(), request);   // periodic timer waits before first request
-        vertx.setPeriodic(request.getFrequencyInMinutes() * 60000, id -> {
-            if (triggerCounter.get() == totalTicks) {
-                vertx.cancelTimer(id);
-                removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
-                LOG.debug("Pipe with ID [{}] done", request.getPipeId());
-            } else {
-                triggerCounter.addAndGet(1);
-                getAndPostOwmApiData(url + params.toString(), request);
-            }
-        });
+
+        // duration of 0 hours is defined to trigger exactly once
+        if (request.getDurationInHours() > 0) {
+            vertx.setPeriodic(request.getFrequencyInMinutes() * 60000, id -> {
+                if (triggerCounter.get() == totalTicks) {
+                    vertx.cancelTimer(id);
+                    removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
+                    LOG.debug("Pipe with ID [{}] done", request.getPipeId());
+                } else {
+                    triggerCounter.addAndGet(1);
+                    getAndPostOwmApiData(url + params.toString(), request);
+                }
+            });
+        }
     }
 
     private void getAndPostOwmApiData(String url, ImportRequest request) {

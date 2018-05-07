@@ -9,6 +9,9 @@ import io.vertx.ext.web.handler.BodyHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -77,14 +80,18 @@ public class MainVerticle extends AbstractVerticle {
         String email = config.getJsonObject("aegis").getString("user");
         String password = config.getJsonObject("aegis").getString("password");
 
-        String filePath = context.request().getParam("payload");
+        String filePath = context.getBodyAsJson().getString("payload");
 
         vertx.executeBlocking(future -> {
-            HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email,password,url);
-            hopsworksAdapter.actionUploadFile(projectId, folder, filePath);
-            LOG.debug("Uploaded file [{}] to hopsworks", filePath);
-            cleanUp(filePath);
-            future.complete();
+            if (Files.exists(Paths.get(filePath))) {
+                HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email, password, url);
+                hopsworksAdapter.actionUploadFile(projectId, folder, filePath);
+                LOG.debug("Uploaded file [{}] to hopsworks", filePath);
+                tryCleanUp(filePath, 3);
+                future.complete();
+            } else {
+                future.fail("File not found: " + filePath);
+            }
         }, result -> {
             if (result.failed()) {
                 LOG.info("Failed to export file [{}] to HopsWorks: ", filePath, result.cause());
@@ -92,16 +99,42 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private void cleanUp(String filePath) {
-        vertx.fileSystem().exists(filePath, exists -> {
-            if (exists.succeeded()) {
-                vertx.fileSystem().delete(filePath, delete -> {
-                    if (delete.failed())
-                        LOG.warn("Failed to clean up file [{}] : ", filePath, delete.cause());
-                });
-            } else {
-                LOG.warn("File [{}] does not exist, skipping deletion", filePath);
-            }
-        });
+    private void tryCleanUp(String filePath, int numberOfTries) {
+        String lockFile = filePath + ".lock";
+
+        if (numberOfTries > 0) {
+            // check if lock file exists
+            vertx.fileSystem().exists(lockFile, existsHandler -> {
+                if (!existsHandler.result()) {
+                    // create lock file
+                    vertx.fileSystem().createFile(lockFile, lockFileHandler -> {
+                        if (lockFileHandler.succeeded()) {
+                            // delete actual file
+                            vertx.fileSystem().delete(filePath, deleteHandler -> {
+                                if (deleteHandler.failed())
+                                    LOG.warn("Failed to clean up file [{}] : ", filePath, deleteHandler.cause());
+
+                                // delete lock file
+                                vertx.fileSystem().delete(lockFile, deleteLockFileHandler -> {
+                                    if (deleteLockFileHandler.failed())
+                                        LOG.error("Failed to delete lock file [{}]", lockFile);
+                                });
+                            });
+                        } else {
+                            LOG.error("Failed to create lock file");
+                        }
+                    });
+                } else {
+                    try {
+                        Thread.sleep(5000);
+                        tryCleanUp(filePath, numberOfTries - 1);
+                    } catch (InterruptedException e) {
+                        LOG.error("Waiting for retry threw an exception: {}", e.getMessage());
+                    }
+                }
+            });
+        } else {
+            LOG.error("Could not write to file [{}]", filePath);
+        }
     }
 }

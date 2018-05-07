@@ -16,9 +16,12 @@ import model.ImportRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static model.Constants.*;
 
@@ -104,75 +107,84 @@ public class MainVerticle extends AbstractVerticle {
     private void runningJobshandler(RoutingContext context, JsonObject config) {
         String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
 
-        JsonObject response = new JsonObject();
-
         getRunningJobsFromFile(jobFile).setHandler(handler -> {
+            JsonObject response = new JsonObject();
+
             if (handler.succeeded()) {
                 context.response().setStatusCode(200);
                 response.put("running", handler.result());
             } else {
                 context.response().setStatusCode(500);
             }
-        });
 
-        context.response().setStatusCode(200);
-        context.response().putHeader("Content-Type", "application/json");
-        context.response().end(response.encode());
+            context.response().setStatusCode(200);
+            context.response().putHeader("Content-Type", "application/json");
+            context.response().end(response.encode());
+        });
     }
 
     private void weatherHandler(RoutingContext context, JsonObject config) {
         String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
 
-        JsonObject response = new JsonObject();
-        context.response().putHeader("Content-Type", "application/json");
 
-        try {
-            ImportRequest request = Json.decodeValue(context.getBody().toString(), ImportRequest.class);
-
-            List<String> runningJobs = new ArrayList<>();
-            getRunningJobsFromFile(jobFile).setHandler(handler -> {
-               if (handler.succeeded()) {
-                   runningJobs.addAll(handler.result());
-               } else {
-                   LOG.warn("Could not retrieve running jobs, collisions may occur");
-               }
-            });
-
-            if (request.getPipeId() == null || runningJobs.contains(request.getPipeId())) {
-                response.put("message", "Please provide a unique pipe ID (pipeId)");
-                context.response().setStatusCode(400);
-            } else if (!TYPE_BBOX.equals(request.getType()) && !TYPE_LOCATION.equals(request.getType())) {
-                response.put("message", "Unknown location type provided (" + request.getType() + ")");
-                context.response().setStatusCode(400);
-            } else if (request.getDurationInHours() * 60 < request.getFrequencyInMinutes()) {
-                response.put("message", "Frequency lower than total duration");
-                context.response().setStatusCode(400);
+        List<String> runningJobs = new ArrayList<>();
+        getRunningJobsFromFile(jobFile).setHandler(handler -> {
+            if (handler.succeeded()) {
+                runningJobs.addAll(handler.result());
             } else {
-                vertx.eventBus().send(Constants.MSG_IMPORT, context.getBodyAsString());
-
-                writeJobToFile(jobFile, request.getPipeId());
-                response.put("status", "ok");
-                context.response().setStatusCode(202);
+                LOG.warn("Could not retrieve running jobs, collisions may occur");
             }
-        } catch (DecodeException e) {
-            e.printStackTrace();
-            response.put("message", "Invalid JSON provided");
-            context.response().setStatusCode(400);
-        }
 
-        context.response().end(response.encode());
+            JsonObject response = new JsonObject();
+            context.response().putHeader("Content-Type", "application/json");
+
+            try {
+                ImportRequest request = Json.decodeValue(context.getBody().toString(), ImportRequest.class);
+
+                if (request.getPipeId() == null || runningJobs.contains(request.getPipeId())) {
+                    response.put("message", "Please provide a unique pipe ID (pipeId)");
+                    context.response().setStatusCode(400);
+                } else if (!TYPE_BBOX.equals(request.getType()) && !TYPE_LOCATION.equals(request.getType())) {
+                    response.put("message", "Unknown location type provided (" + request.getType() + ")");
+                    context.response().setStatusCode(400);
+                } else if (request.getDurationInHours() != 0 && request.getDurationInHours() * 60 < request.getFrequencyInMinutes()) {
+                    response.put("message", "Frequency lower than total duration");
+                    context.response().setStatusCode(400);
+                } else {
+                    vertx.eventBus().send(Constants.MSG_IMPORT, context.getBodyAsString());
+
+                    writeJobToFile(jobFile, request.getPipeId());
+                    context.response().setStatusCode(202);
+                }
+            } catch (DecodeException e) {
+                e.printStackTrace();
+                response.put("message", "Invalid JSON provided");
+                context.response().setStatusCode(400);
+            }
+
+            context.response().end(response.encode());
+        });
     }
 
     private Future<List<String>> getRunningJobsFromFile(String filePath) {
         Future<List<String>> runningJobs = Future.future();
 
-        vertx.fileSystem().readFile(filePath, readHandler -> {
-            if (readHandler.succeeded()) {
-                String content = readHandler.result().toString();
-                runningJobs.complete(Arrays.asList(content.split(System.lineSeparator())));
+        vertx.<List<String>>executeBlocking(handler -> {
+            List<String> jobs = new ArrayList<>();
+
+            try (Stream<String> stream = Files.lines(Paths.get(filePath))) {
+                stream.forEach(jobs::add);
+                LOG.debug("Running jobs: {}", jobs);
+            } catch (IOException e) {
+                LOG.error("Failed to read job file: {}", e.getMessage());
+            }
+
+            handler.complete(jobs);
+        }, result -> {
+            if (result.succeeded()) {
+                runningJobs.complete(result.result());
             } else {
-                LOG.warn("Cannot read jobs, file [{}] does not exist", filePath);
-                runningJobs.fail("File " + filePath + "does not exist");
+                runningJobs.fail("Failed to read job file " + result.cause());
             }
         });
 
@@ -183,7 +195,7 @@ public class MainVerticle extends AbstractVerticle {
         vertx.fileSystem().open(filePath, new OpenOptions().setAppend(true), ar -> {
             if (ar.succeeded()) {
                 AsyncFile ws = ar.result();
-                Buffer chunk = Buffer.buffer(jobId + "\n");
+                Buffer chunk = Buffer.buffer(jobId + System.lineSeparator());
                 ws.write(chunk);
             } else {
                 LOG.error("Could not open file [{}]", filePath);

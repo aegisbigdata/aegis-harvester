@@ -74,13 +74,17 @@ public class MainVerticle extends AbstractVerticle {
     private void handleExport(RoutingContext context, JsonObject config) {
         LOG.debug("Received request with body {}", context.getBodyAsString());
 
+        String filePath = context.getBodyAsJson().getString("payload");
+        context.response()
+                .setStatusCode(202) // accepted
+                .putHeader("Content-Type", "application/json")
+                .end();
+
         String projectId = config.getJsonObject("aegis").getString("projectId");
         String folder = config.getJsonObject("aegis").getString("folder");
         String url = config.getJsonObject("aegis").getString("url");  //test server
         String email = config.getJsonObject("aegis").getString("user");
         String password = config.getJsonObject("aegis").getString("password");
-
-        String filePath = context.getBodyAsJson().getString("payload");
 
         vertx.executeBlocking(future -> {
             if (Files.exists(Paths.get(filePath))) {

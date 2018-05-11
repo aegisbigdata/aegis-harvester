@@ -86,7 +86,7 @@ public class ImporterVerticle extends AbstractVerticle {
             try {
                 HttpResponse response = httpClient.execute(httpPost);
                 int status = response.getStatusLine().getStatusCode();
-                String body = EntityUtils.toString(response.getEntity());
+                JsonObject body = new JsonObject(EntityUtils.toString(response.getEntity()));
 
                 LOG.debug("OWM API Response ({}): {}", response.getStatusLine().getStatusCode(), body);
 
@@ -97,11 +97,11 @@ public class ImporterVerticle extends AbstractVerticle {
                     List<Future> sendFutures = new ArrayList<>();
 
                     if (TYPE_BBOX.equals(request.getType())) {
-                        for (Object obj : new JsonArray(body)) {
+                        for (Object obj : body.getJsonArray("list")) {
                             sendFutures.add(sendWeatherData(request.getPipeId(), (JsonObject) obj));
                         }
                     } else {
-                        sendFutures.add(sendWeatherData(request.getPipeId(), new JsonObject(body)));
+                        sendFutures.add(sendWeatherData(request.getPipeId(), body));
                     }
 
                     CompositeFuture.all(sendFutures).setHandler(handler -> {

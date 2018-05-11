@@ -29,7 +29,6 @@ public class TransformationVerticle extends AbstractVerticle {
             LOG.debug("Transforming payload {}", payload.encode());
 
             StringBuilder sb = new StringBuilder();
-//            sb.append("City,Time,Latitude,Longitude,Temperature\n");
 
             String city = payload.getString("name");
 

@@ -88,10 +88,17 @@ public class MainVerticle extends AbstractVerticle {
 
         vertx.executeBlocking(future -> {
             if (Files.exists(Paths.get(filePath))) {
+
                 HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email, password, url);
                 hopsworksAdapter.actionUploadFile(projectId, folder, filePath);
+
                 LOG.debug("Uploaded file [{}] to hopsworks", filePath);
-                tryCleanUp(filePath, 3);
+
+                vertx.fileSystem().delete(filePath, deleteHandler -> {
+                            if (deleteHandler.failed())
+                                LOG.warn("Failed to clean up file [{}] : ", filePath, deleteHandler.cause());
+                        });
+
                 future.complete();
             } else {
                 future.fail("File not found: " + filePath);
@@ -101,44 +108,5 @@ public class MainVerticle extends AbstractVerticle {
                 LOG.info("Failed to export file [{}] to HopsWorks: ", filePath, result.cause());
             }
         });
-    }
-
-    private void tryCleanUp(String filePath, int numberOfTries) {
-        String lockFile = filePath + ".lock";
-
-        if (numberOfTries > 0) {
-            // check if lock file exists
-            vertx.fileSystem().exists(lockFile, existsHandler -> {
-                if (!existsHandler.result()) {
-                    // create lock file
-                    vertx.fileSystem().createFile(lockFile, lockFileHandler -> {
-                        if (lockFileHandler.succeeded()) {
-                            // delete actual file
-                            vertx.fileSystem().delete(filePath, deleteHandler -> {
-                                if (deleteHandler.failed())
-                                    LOG.warn("Failed to clean up file [{}] : ", filePath, deleteHandler.cause());
-
-                                // delete lock file
-                                vertx.fileSystem().delete(lockFile, deleteLockFileHandler -> {
-                                    if (deleteLockFileHandler.failed())
-                                        LOG.error("Failed to delete lock file [{}]", lockFile);
-                                });
-                            });
-                        } else {
-                            LOG.error("Failed to create lock file");
-                        }
-                    });
-                } else {
-                    try {
-                        Thread.sleep(5000);
-                        tryCleanUp(filePath, numberOfTries - 1);
-                    } catch (InterruptedException e) {
-                        LOG.error("Waiting for retry threw an exception: {}", e.getMessage());
-                    }
-                }
-            });
-        } else {
-            LOG.error("Could not write to file [{}]", filePath);
-        }
     }
 }

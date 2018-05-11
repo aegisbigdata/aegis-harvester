@@ -49,6 +49,7 @@ public class AggregationVerticle extends AbstractVerticle {
             buffer.get(request.getFilePath()).add(request.getData());
         } else {
             List<String> data = new ArrayList<>();
+            data.add("City,Time,Latitude,Longitude,Temperature\n");
             data.add(request.getData());
             buffer.put(request.getFilePath(), data);
         }
@@ -60,6 +61,7 @@ public class AggregationVerticle extends AbstractVerticle {
                 if (!aggregationIds.contains(request.getPipeId())) {
                     vertx.setTimer(config().getInteger("frequencyInMinutes") * 60000, timer -> {
                         exportFile(request.getPipeId(), request.getFilePath());
+                        buffer.remove(request.getFilePath());
                         aggregationIds.remove(request.getPipeId());
                     });
 

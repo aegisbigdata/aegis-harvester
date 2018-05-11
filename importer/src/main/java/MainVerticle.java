@@ -30,14 +30,15 @@ public class MainVerticle extends AbstractVerticle {
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
 
     private JsonObject config;
+    private String jobFile;
 
     @Override
     public void start() {
         LOG.info("Launching importer...");
 
         Future<Void> steps = loadConfig()
-                .compose(this::bootstrapVerticle)
-                .compose(this::startServer);
+                .compose(handler -> bootstrapVerticle())
+                .compose(handler -> startServer());
 
         steps.setHandler(handler -> {
             if (handler.succeeded()) {
@@ -53,17 +54,20 @@ public class MainVerticle extends AbstractVerticle {
         LOG.info("Shutting down...");
 
         String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
-        vertx.fileSystem().delete(jobFile)
+        vertx.fileSystem().delete(jobFile, handler -> {
+           if (handler.failed())
+               LOG.warn("Failed to clean up file [{}]", jobFile);
+        });
     }
 
-    private Future<JsonObject> loadConfig() {
-        Future<JsonObject> future = Future.future();
+    private Future<Void> loadConfig() {
+        Future<Void> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
             if (handler.succeeded()) {
-                JsonObject confi
-                jobFile =         String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;;
-                future.complete(handler.result());
+                config = handler.result();
+                jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
+                future.complete();
             } else {
                 future.fail("Failed to load config: " + handler.cause());
             }
@@ -73,9 +77,8 @@ public class MainVerticle extends AbstractVerticle {
     }
 
 
-    private Future<JsonObject> bootstrapVerticle(JsonObject config) {
-
-        Future<JsonObject> future = Future.future();
+    private Future<Void> bootstrapVerticle() {
+        Future<Void> future = Future.future();
 
         DeploymentOptions options = new DeploymentOptions()
                 .setConfig(config)
@@ -83,7 +86,7 @@ public class MainVerticle extends AbstractVerticle {
 
         vertx.deployVerticle(ImporterVerticle.class.getName(), options, handler -> {
             if (handler.succeeded()) {
-                future.complete(config);
+                future.complete();
             } else {
                 future.fail("Failed to deploy importer verticle: " + handler.cause());
             }
@@ -92,16 +95,14 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private Future<Void> startServer(JsonObject config) {
+    private Future<Void> startServer() {
         Future<Void> future = Future.future();
         Integer port = config.getInteger("http.port");
 
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
-        router.get("/running").handler(context ->
-                runningJobshandler(context, config));
-        router.post("/weather").handler(context ->
-                weatherHandler(context, config));
+        router.get("/running").handler(this::runningJobshandler);
+        router.post("/weather").handler(this::weatherHandler);
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -116,9 +117,7 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private void runningJobshandler(RoutingContext context, JsonObject config) {
-        String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
-
+    private void runningJobshandler(RoutingContext context) {
         getRunningJobsFromFile(jobFile).setHandler(handler -> {
             JsonObject response = new JsonObject();
 
@@ -135,7 +134,7 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private void weatherHandler(RoutingContext context, JsonObject config) {
+    private void weatherHandler(RoutingContext context) {
         List<String> runningJobs = new ArrayList<>();
         getRunningJobsFromFile(jobFile).setHandler(handler -> {
             if (handler.succeeded()) {

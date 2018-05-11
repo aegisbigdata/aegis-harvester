@@ -99,7 +99,9 @@ public class MainVerticle extends AbstractVerticle {
 
         String pipeId = message.getString("pipeId");
         String filePath = config.getString("fileDir") + "/"
-                + pipeId;
+                + pipeId + "_"
+                + message.getString("location")
+                + ".csv";
 
         WriteRequest request = new WriteRequest(pipeId, filePath, message.getString("payload"));
         vertx.eventBus().send(Constants.MSG_DATA, Json.encode(request));

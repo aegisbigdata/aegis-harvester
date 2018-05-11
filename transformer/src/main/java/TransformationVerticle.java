@@ -30,7 +30,7 @@ public class TransformationVerticle extends AbstractVerticle {
 
             StringBuilder sb = new StringBuilder();
 
-            String city = payload.getString("name");
+            String location = payload.getString("name");
 
             // keys have different case depending on request type (bbox vs locationId)
             Double latitude = payload.getJsonObject("coord").getDouble("Lat") != null
@@ -45,23 +45,24 @@ public class TransformationVerticle extends AbstractVerticle {
             Long timeStamp = payload.getLong("dt");
             String date = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date(timeStamp * 1000L));
 
-            sb.append(city).append(",");
+            sb.append(location).append(",");
             sb.append(date).append(",");
             sb.append(latitude).append(",");
             sb.append(longitude).append(",");
             sb.append(temp).append("\n");
 
-            sendLine(pipeId, sb.toString());
+            sendLine(pipeId, location, sb.toString());
         });
 
         future.complete();
     }
 
-    private void sendLine(String pipeId, String payload) {
+    private void sendLine(String pipeId, String location, String payload) {
         LOG.debug("Sending line [{}]", payload);
 
         JsonObject message = new JsonObject();
         message.put("pipeId", pipeId);
+        message.put("location", location.replaceAll("[^a-zA-Z]+","")); // remove special chars for use as file name
         message.put("payload", payload);
 
         Integer port = config().getInteger("target.port");

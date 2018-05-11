@@ -16,5 +16,5 @@ A pipeline consisting of four micro services performing the following steps:
 Install the following services. Specific instructions can be found in their respective directories.
 * Importer
 * Transformer
-* Aggregator (optional)
+* Aggregator
 * Exporter

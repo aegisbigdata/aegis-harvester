@@ -29,6 +29,8 @@ public class MainVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
 
+    private JsonObject config;
+
     @Override
     public void start() {
         LOG.info("Launching importer...");
@@ -46,11 +48,21 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
+    @Override
+    public void stop() {
+        LOG.info("Shutting down...");
+
+        String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
+        vertx.fileSystem().delete(jobFile)
+    }
+
     private Future<JsonObject> loadConfig() {
         Future<JsonObject> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
             if (handler.succeeded()) {
+                JsonObject confi
+                jobFile =         String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;;
                 future.complete(handler.result());
             } else {
                 future.fail("Failed to load config: " + handler.cause());
@@ -124,9 +136,6 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void weatherHandler(RoutingContext context, JsonObject config) {
-        String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
-
-
         List<String> runningJobs = new ArrayList<>();
         getRunningJobsFromFile(jobFile).setHandler(handler -> {
             if (handler.succeeded()) {

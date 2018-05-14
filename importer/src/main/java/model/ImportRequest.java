@@ -3,6 +3,7 @@ package model;
 public class ImportRequest {
 
     private String pipeId;
+    private String hopsFolder;
     private String type;
     private String value;
 
@@ -15,6 +16,14 @@ public class ImportRequest {
 
     public void setPipeId(String pipeId) {
         this.pipeId = pipeId;
+    }
+
+    public String getHopsFolder() {
+        return hopsFolder;
+    }
+
+    public void setHopsFolder(String hopsFolder) {
+        this.hopsFolder = hopsFolder;
     }
 
     public String getType() {
@@ -53,6 +62,7 @@ public class ImportRequest {
     public String toString() {
         return "ImportRequest{" +
                 "pipeId='" + pipeId + '\'' +
+                ", hopsFolder='" + hopsFolder + '\'' +
                 ", type='" + type + '\'' +
                 ", value='" + value + '\'' +
                 ", durationInHours=" + durationInHours +

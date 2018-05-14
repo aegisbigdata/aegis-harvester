@@ -2,10 +2,14 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
+import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import model.Constants;
+import model.TransformationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,14 +17,16 @@ public class MainVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
 
+    private JsonObject config;
+
     @Override
     public void start(Future<Void> future) {
 
         LOG.info("Launching transformer...");
 
         Future<Void> steps = loadConfig()
-                .compose(this::bootstrapVerticle)
-                .compose(this::startServer);
+                .compose(handler -> bootstrapVerticle())
+                .compose(handler -> startServer());
 
         steps.setHandler(handler -> {
             if (handler.succeeded()) {
@@ -31,12 +37,13 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private Future<JsonObject> loadConfig() {
-        Future<JsonObject> future = Future.future();
+    private Future<Void> loadConfig() {
+        Future<Void> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
             if(handler.succeeded()) {
-                future.complete(handler.result());
+                config = handler.result();
+                future.complete();
             } else {
                 future.fail("Failed to load config: " + handler.cause());
             }
@@ -45,8 +52,8 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private Future<JsonObject> bootstrapVerticle(JsonObject config) {
-        Future<JsonObject> future = Future.future();
+    private Future<Void> bootstrapVerticle() {
+        Future<Void> future = Future.future();
 
         DeploymentOptions options = new DeploymentOptions()
                 .setConfig(config)
@@ -54,7 +61,7 @@ public class MainVerticle extends AbstractVerticle {
 
         vertx.deployVerticle(TransformationVerticle.class.getName(), options, handler -> {
             if (handler.succeeded()) {
-                future.complete(config);
+                future.complete();
             } else {
                 future.fail("Failed to deploy transformation verticle: " + handler.cause());
             }
@@ -63,7 +70,7 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private Future<Void> startServer(JsonObject config) {
+    private Future<Void> startServer() {
         Future<Void> future = Future.future();
         Integer port = config.getInteger("http.port");
 
@@ -85,18 +92,22 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void handleTransformation(RoutingContext context) {
+        try {
+            LOG.debug("Received request with body {}", context.getBodyAsString());
 
-        LOG.debug("Received request with body {}", context.getBodyAsString());
+            Json.decodeValue(context.getBody().toString(), TransformationRequest.class);
+            vertx.eventBus().send(Constants.MSG_TRANSFORM, context.getBodyAsString());
 
-        JsonObject message = new JsonObject();
-        message.put("pipeId", context.getBodyAsJson().getString("pipeId"));
-        message.put("payload", context.getBodyAsJson().getJsonObject("payload"));
-
-        vertx.eventBus().send("transform", message);
-
-        context.response()
-                .setStatusCode(202) // accepted
-                .putHeader("Content-Type", "application/json")
-                .end();
+            context.response()
+                    .setStatusCode(202) // accepted
+                    .putHeader("Content-Type", "application/json")
+                    .end();
+        } catch (DecodeException e) {
+            e.printStackTrace();
+            LOG.debug("Invalid request received");
+            context.response()
+                    .setStatusCode(400)
+                    .end("Invalid JSON provided");
+        }
     }
 }

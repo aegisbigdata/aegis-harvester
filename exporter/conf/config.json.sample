@@ -3,7 +3,6 @@
   "aegis": {
     "url": "http://bbc6.sics.se:8080/hopsworks-api/api",
     "projectId": "1027",
-    "folder": "upload/test_fki",
     "user": "admin@kth.se",
     "password": "admin"
   }

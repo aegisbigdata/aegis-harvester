@@ -165,7 +165,6 @@ public class MainVerticle extends AbstractVerticle {
                     context.response().setStatusCode(202);
                 }
             } catch (DecodeException e) {
-                e.printStackTrace();
                 response.put("message", "Invalid JSON provided");
                 context.response().setStatusCode(400);
             }

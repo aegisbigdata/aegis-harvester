@@ -37,7 +37,7 @@ public class AggregationVerticle extends AbstractVerticle {
         webClient = WebClient.create(vertx);
         vertx.setPeriodic(10000, handler -> writeToFilePeriodically());
 
-        vertx.eventBus().consumer(Constants.MSG_DATA, this::aggregate);
+        vertx.eventBus().consumer(Constants.MSG_AGGREGATE, this::aggregate);
         future.complete();
     }
 
@@ -60,7 +60,7 @@ public class AggregationVerticle extends AbstractVerticle {
                 LOG.debug("Timers currently running: {}", aggregationIds);
                 if (!aggregationIds.contains(request.getPipeId())) {
                     vertx.setTimer(config().getInteger("frequencyInMinutes") * 60000, timer -> {
-                        exportFile(request.getPipeId(), request.getFilePath());
+                        exportFile(request);
                         buffer.remove(request.getFilePath());
                         aggregationIds.remove(request.getPipeId());
                     });
@@ -91,12 +91,13 @@ public class AggregationVerticle extends AbstractVerticle {
         }));
     }
 
-    private void exportFile(String pipeId, String filePath) {
-        LOG.debug("Exporting file [{}]", filePath);
+    private void exportFile(WriteRequest request) {
+        LOG.debug("Exporting file [{}]", request.getFilePath());
 
         JsonObject message = new JsonObject();
-        message.put("pipeId", pipeId);
-        message.put("payload", filePath);
+        message.put("pipeId", request.getPipeId());
+        message.put("hopsFolder", request.getHopsFolder());
+        message.put("payload", request.getFilePath());
 
         Integer port = config().getInteger("target.port");
         String host = config().getString("target.host");

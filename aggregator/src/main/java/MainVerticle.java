@@ -2,9 +2,6 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.file.AsyncFile;
-import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -19,13 +16,15 @@ public class MainVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
 
+    private JsonObject config;
+
     @Override
     public void start() {
         LOG.info("Launching aggregator...");
 
         Future<Void> steps = loadConfig()
-                .compose(this::bootstrapVerticle)
-                .compose(this::startServer);
+                .compose(handler -> bootstrapVerticle())
+                .compose(handler -> startServer());
 
         steps.setHandler(handler -> {
             if (handler.succeeded()) {
@@ -37,12 +36,13 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private Future<JsonObject> loadConfig() {
-        Future<JsonObject> future = Future.future();
+    private Future<Void> loadConfig() {
+        Future<Void> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
             if (handler.succeeded()) {
-                future.complete(handler.result());
+                config = handler.result();
+                future.complete();
             } else {
                 future.fail("Failed to load config: " + handler.cause());
             }
@@ -51,9 +51,8 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private Future<JsonObject> bootstrapVerticle(JsonObject config) {
-
-        Future<JsonObject> future = Future.future();
+    private Future<Void> bootstrapVerticle() {
+        Future<Void> future = Future.future();
 
         DeploymentOptions options = new DeploymentOptions()
                 .setConfig(config)
@@ -61,7 +60,7 @@ public class MainVerticle extends AbstractVerticle {
 
         vertx.deployVerticle(AggregationVerticle.class.getName(), options, handler -> {
             if (handler.succeeded()) {
-                future.complete(config);
+                future.complete();
             } else {
                 future.fail("Failed to deploy aggregation verticle: " + handler.cause());
             }
@@ -70,15 +69,13 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private Future<Void> startServer(JsonObject config) {
+    private Future<Void> startServer() {
         Future<Void> future = Future.future();
         Integer port = config.getInteger("http.port");
 
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
-        router.post("/aggregate").handler(context ->
-                handleAggregation(context, config)
-        );
+        router.post("/aggregate").handler(this::handleAggregation);
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -93,9 +90,11 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private void handleAggregation(RoutingContext context, JsonObject config) {
+    private void handleAggregation(RoutingContext context) {
         LOG.debug("Received request with body {}", context.getBodyAsString());
+
         JsonObject message = context.getBodyAsJson();
+        String hopsFolder = message.getString("hopsFolder");
 
         String pipeId = message.getString("pipeId");
         String filePath = config.getString("fileDir") + "/"
@@ -103,8 +102,8 @@ public class MainVerticle extends AbstractVerticle {
                 + message.getString("location")
                 + ".csv";
 
-        WriteRequest request = new WriteRequest(pipeId, filePath, message.getString("payload"));
-        vertx.eventBus().send(Constants.MSG_DATA, Json.encode(request));
+        WriteRequest request = new WriteRequest(pipeId, hopsFolder, filePath, message.getString("payload"));
+        vertx.eventBus().send(Constants.MSG_AGGREGATE, Json.encode(request));
 
         context.response()
                 .setStatusCode(202) // accepted

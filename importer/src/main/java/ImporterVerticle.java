@@ -98,10 +98,10 @@ public class ImporterVerticle extends AbstractVerticle {
 
                     if (TYPE_BBOX.equals(request.getType())) {
                         for (Object obj : body.getJsonArray("list")) {
-                            sendFutures.add(sendWeatherData(request.getPipeId(), (JsonObject) obj));
+                            sendFutures.add(sendWeatherData(request, (JsonObject) obj));
                         }
                     } else {
-                        sendFutures.add(sendWeatherData(request.getPipeId(), body));
+                        sendFutures.add(sendWeatherData(request, body));
                     }
 
                     CompositeFuture.all(sendFutures).setHandler(handler -> {
@@ -123,7 +123,7 @@ public class ImporterVerticle extends AbstractVerticle {
         });
     }
 
-    private Future<Void> sendWeatherData(String pipeId, JsonObject payload) {
+    private Future<Void> sendWeatherData(ImportRequest request, JsonObject payload) {
         Future<Void> future = Future.future();
 
         String url = "http://"
@@ -132,12 +132,14 @@ public class ImporterVerticle extends AbstractVerticle {
                 + config().getString("target.endpoint");
 
         JsonObject message = new JsonObject();
-        message.put("pipeId", pipeId);
-        message.put("payload", payload);
+        message.put("pipeId", request.getPipeId());
+        message.put("hopsFolder", request.getHopsFolder());
+        message.put("payload", payload.toString());
 
         vertx.executeBlocking(handler -> {
             try {
                 HttpPost postRequest = new HttpPost(url);
+                postRequest.setHeader("Content-Type", "application/json");
 
                 HttpEntity entity = new ByteArrayEntity(message.encode().getBytes("UTF-8"));
                 postRequest.setEntity(entity);

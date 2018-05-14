@@ -12,16 +12,15 @@ Periodically Fetches data from the [OpenWeatherMap API](https://openweathermap.o
         ```
         $ cp conf/config.sample.json conf/config.json
         ```
-
     * Edit the configuration to your liking:
 
-    |Key|Description|
-    |:--- |:---|
-    |http.port| The port this service will run on |
-    |target.host| The host of the service the importer will push it's data to |
-    |target.port| The port of the service the importer will push it's data to |
-    |target.endpoint| The relative URI of the service the importer will push it's data to |
-    |owmApiKey| Your OpenWeatherMap API key |
+        |Key|Description|
+        |:--- |:---|
+        |http.port| The port this service will run on |
+        |target.host| The host of the service the importer will push it's data to |
+        |target.port| The port of the service the importer will push it's data to |
+        |target.endpoint| The relative URI of the service the importer will push it's data to |
+        |owmApiKey| Your OpenWeatherMap API key |
 
 2. Start the application
 

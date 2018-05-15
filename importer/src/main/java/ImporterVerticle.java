@@ -4,7 +4,6 @@ import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import model.Constants;
 import model.ImportRequest;
@@ -60,7 +59,7 @@ public class ImporterVerticle extends AbstractVerticle {
         AtomicLong triggerCounter = new AtomicLong(0);  // atomic so variable is permitted in lambda expression
         LOG.debug("Importing [{}] times for pipe with ID [{}]", totalTicks, request.getPipeId());
 
-        getAndPostOwmApiData(url + params.toString(), request);   // periodic timer waits before first request
+        getOwmApiData(url + params.toString(), request);   // periodic timer waits before first request
 
         // duration of 0 hours is defined to trigger exactly once
         if (request.getDurationInHours() > 0) {
@@ -71,20 +70,20 @@ public class ImporterVerticle extends AbstractVerticle {
                     LOG.debug("Pipe with ID [{}] done", request.getPipeId());
                 } else {
                     triggerCounter.addAndGet(1);
-                    getAndPostOwmApiData(url + params.toString(), request);
+                    getOwmApiData(url + params.toString(), request);
                 }
             });
         }
     }
 
-    private void getAndPostOwmApiData(String url, ImportRequest request) {
+    private void getOwmApiData(String url, ImportRequest request) {
         LOG.debug("Request URL: {}", url);
 
         vertx.executeBlocking(future -> {
-            HttpGet httpPost = new HttpGet(url);
+            HttpGet httpGet = new HttpGet(url);
 
             try {
-                HttpResponse response = httpClient.execute(httpPost);
+                HttpResponse response = httpClient.execute(httpGet);
                 int status = response.getStatusLine().getStatusCode();
                 JsonObject body = new JsonObject(EntityUtils.toString(response.getEntity()));
 
@@ -168,6 +167,7 @@ public class ImporterVerticle extends AbstractVerticle {
         return future;
     }
 
+    // calculates the total number of times data should be read from an endpoint
     private long computeNumberOfTicks(ImportRequest request) {
 
         // sanitize inputs

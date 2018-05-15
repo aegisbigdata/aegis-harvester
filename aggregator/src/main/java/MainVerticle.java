@@ -96,9 +96,9 @@ public class MainVerticle extends AbstractVerticle {
         JsonObject message = context.getBodyAsJson();
         String hopsFolder = message.getString("hopsFolder");
 
+        // TODO generate robust file names
         String pipeId = message.getString("pipeId");
         String filePath = config.getString("fileDir") + "/"
-                + pipeId + "_"
                 + message.getString("location")
                 + ".csv";
 

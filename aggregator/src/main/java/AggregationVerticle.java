@@ -83,7 +83,8 @@ public class AggregationVerticle extends AbstractVerticle {
                     ws.write(chunk);
                 });
 
-                // remove data already written
+                // clean up
+                ws.close();
                 buffer.get(filePath).clear();
             } else {
                 LOG.error("Could not open file [{}]", filePath);

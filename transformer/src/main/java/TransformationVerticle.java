@@ -40,6 +40,11 @@ public class TransformationVerticle extends AbstractVerticle {
         List<String> csvValues = new ArrayList<>();
         csvValues.add(location);
 
+        Long timeStamp = payload.getLong("dt");
+        csvValues.add(timeStamp != null
+                ? new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date(timeStamp * 1000L))
+                : "");
+
         JsonObject coordinates = payload.getJsonObject("coord");
         if (coordinates != null) {
             // keys have different case depending on request type (bbox vs locationId)
@@ -52,8 +57,7 @@ public class TransformationVerticle extends AbstractVerticle {
                     : coordinates.getDouble("lon") != null ? coordinates.getDouble("lon").toString() : "");
         } else {
             // make sure not to break csv structure on missing values
-            csvValues.add("");
-            csvValues.add("");
+            addEmptyValues(csvValues,2);
         }
 
         JsonObject main = payload.getJsonObject("main");
@@ -63,21 +67,28 @@ public class TransformationVerticle extends AbstractVerticle {
             csvValues.add(main.getDouble("humidity") != null ? main.getDouble("humidity").toString() : "");
             csvValues.add(main.getDouble("temp_min") != null ? main.getDouble("temp_min").toString() : "");
             csvValues.add(main.getDouble("temp_max") != null ? main.getDouble("temp_max").toString() : "");
+            csvValues.add(main.getDouble("visibility") != null ? main.getDouble("visibility").toString() : "");
         } else {
             // make sure not to break csv structure on missing values
-            csvValues.add("");
-            csvValues.add("");
-            csvValues.add("");
-            csvValues.add("");
-            csvValues.add("");
+            addEmptyValues(csvValues,6);
         }
 
-        Long timeStamp = payload.getLong("dt");
-        csvValues.add(timeStamp != null
-                ? new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date(timeStamp * 1000L))
-                : "");
+        JsonObject wind = payload.getJsonObject("wind");
+        if (wind != null) {
+            csvValues.add(wind.getDouble("speed") != null ? wind.getDouble("speed").toString() : "");
+            csvValues.add(wind.getDouble("deg") != null ? wind.getDouble("deg").toString() : "");
+        } else {
+            addEmptyValues(csvValues, 2);
+        }
 
-        sendLine(request, location, String.join(",", csvValues));
+        JsonObject clouds = payload.getJsonObject("clouds");
+        if (clouds != null) {
+            csvValues.add(clouds.getDouble("all") != null ? clouds.getDouble("all").toString() : "");
+        } else {
+            addEmptyValues(csvValues, 1);
+        }
+
+        sendLine(request, location, String.join(",", csvValues) + "\n");
     }
 
     private void sendLine(TransformationRequest request, String location, String payload) {
@@ -87,6 +98,8 @@ public class TransformationVerticle extends AbstractVerticle {
         message.put("pipeId", request.getPipeId());
         message.put("hopsFolder", request.getHopsFolder());
         message.put("location", location != null ? location.replaceAll("[^a-zA-Z]+","") : ""); // remove special chars for use as file name
+        message.put("csvHeaders", "Location,Time,Latitude,Longitude,Avg. Temperature,Pressure,Humidity," +
+                "Min. Temperature,Max. Temperature,Visibility,Wind Speed,Wind Direction,Cloudiness");
         message.put("payload", payload);
 
         Integer port = config().getInteger("target.port");
@@ -105,5 +118,10 @@ public class TransformationVerticle extends AbstractVerticle {
                         LOG.warn("POST to [{}] on port [{}] failed: {}", host + requestURI, port, postResult.cause());
                     }
                 });
+    }
+
+    private void addEmptyValues(List<String> list, int count) {
+        for (int i = 0; i < count; i++)
+            list.add("");
     }
 }

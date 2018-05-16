@@ -5,16 +5,18 @@ public class WriteRequest {
     private String pipeId;
     private String hopsFolder;
     private String filePath;
-    private String data;
+    private String csvHeaders;
+    private String csvData;
 
     public WriteRequest() {
     }
 
-    public WriteRequest(String pipeId, String hopsFolder, String filePath, String data) {
+    public WriteRequest(String pipeId, String hopsFolder, String filePath, String csvHeaders, String csvData) {
         this.pipeId = pipeId;
         this.hopsFolder = hopsFolder;
         this.filePath = filePath;
-        this.data = data;
+        this.csvHeaders = csvHeaders;
+        this.csvData = csvData;
     }
 
     public String getPipeId() {
@@ -41,12 +43,20 @@ public class WriteRequest {
         this.filePath = filePath;
     }
 
-    public String getData() {
-        return data;
+    public String getCsvHeaders() {
+        return csvHeaders;
     }
 
-    public void setData(String data) {
-        this.data = data;
+    public void setCsvHeaders(String csvHeaders) {
+        this.csvHeaders = csvHeaders;
+    }
+
+    public String getCsvData() {
+        return csvData;
+    }
+
+    public void setCsvData(String csvData) {
+        this.csvData = csvData;
     }
 
     @Override
@@ -55,7 +65,8 @@ public class WriteRequest {
                 "pipeId='" + pipeId + '\'' +
                 ", hopsFolder='" + hopsFolder + '\'' +
                 ", filePath='" + filePath + '\'' +
-                ", data='" + data + '\'' +
+                ", csvHeaders='" + csvHeaders + '\'' +
+                ", data='" + csvData + '\'' +
                 '}';
     }
 }

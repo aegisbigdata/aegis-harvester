@@ -95,6 +95,8 @@ public class MainVerticle extends AbstractVerticle {
 
         JsonObject message = context.getBodyAsJson();
         String hopsFolder = message.getString("hopsFolder");
+        String csvHeaders = message.getString("csvHeaders");
+        String csvData = message.getString("payload");
 
         // TODO generate robust file names
         String pipeId = message.getString("pipeId");
@@ -102,7 +104,7 @@ public class MainVerticle extends AbstractVerticle {
                 + message.getString("location")
                 + ".csv";
 
-        WriteRequest request = new WriteRequest(pipeId, hopsFolder, filePath, message.getString("payload"));
+        WriteRequest request = new WriteRequest(pipeId, hopsFolder, filePath, csvHeaders, csvData);
         vertx.eventBus().send(Constants.MSG_AGGREGATE, Json.encode(request));
 
         context.response()

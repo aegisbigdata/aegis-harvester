@@ -46,11 +46,11 @@ public class AggregationVerticle extends AbstractVerticle {
         LOG.debug("Received aggregation request for {}", request);
 
         if (buffer.containsKey(request.getFilePath())) {
-            buffer.get(request.getFilePath()).add(request.getData());
+            buffer.get(request.getFilePath()).add(request.getCsvData());
         } else {
             List<String> data = new ArrayList<>();
-            data.add("City,Time,Latitude,Longitude,Temperature\n");
-            data.add(request.getData());
+            data.add(request.getCsvHeaders() + "\n");
+            data.add(request.getCsvData());
             buffer.put(request.getFilePath(), data);
         }
 

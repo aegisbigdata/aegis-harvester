@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.*;
 
 public class TransformationVerticle extends AbstractVerticle {
 
@@ -33,32 +33,51 @@ public class TransformationVerticle extends AbstractVerticle {
         TransformationRequest request = Json.decodeValue(message.body(), TransformationRequest.class);
 
         LOG.debug("Transforming {}", request);
+
         JsonObject payload = new JsonObject(request.getPayload());
-
-        StringBuilder sb = new StringBuilder();
-
         String location = payload.getString("name");
 
-        // keys have different case depending on request type (bbox vs locationId)
-        Double latitude = payload.getJsonObject("coord").getDouble("Lat") != null
-                ? payload.getJsonObject("coord").getDouble("Lat")
-                : payload.getJsonObject("coord").getDouble("lat");
+        List<String> csvValues = new ArrayList<>();
+        csvValues.add(location);
 
-        Double longitude = payload.getJsonObject("coord").getDouble("Lon") != null
-                ? payload.getJsonObject("coord").getDouble("Lon")
-                : payload.getJsonObject("coord").getDouble("lon");
+        JsonObject coordinates = payload.getJsonObject("coord");
+        if (coordinates != null) {
+            // keys have different case depending on request type (bbox vs locationId)
+            csvValues.add(coordinates.getDouble("Lat") != null
+                    ? coordinates.getDouble("Lat") != null ? coordinates.getDouble("Lat").toString() : ""
+                    : coordinates.getDouble("lat") != null ? coordinates.getDouble("lat").toString() : "");
 
-        String temp = payload.getJsonObject("main").getDouble("temp").toString();
+            csvValues.add(coordinates.getDouble("Lon") != null
+                    ? coordinates.getDouble("Lon") != null ? coordinates.getDouble("Lon").toString() : ""
+                    : coordinates.getDouble("lon") != null ? coordinates.getDouble("lon").toString() : "");
+        } else {
+            // make sure not to break csv structure on missing values
+            csvValues.add("");
+            csvValues.add("");
+        }
+
+        JsonObject main = payload.getJsonObject("main");
+        if (main != null) {
+            csvValues.add(main.getDouble("temp") != null ? main.getDouble("temp").toString() : "");
+            csvValues.add(main.getDouble("pressure") != null ? main.getDouble("pressure").toString() : "");
+            csvValues.add(main.getDouble("humidity") != null ? main.getDouble("humidity").toString() : "");
+            csvValues.add(main.getDouble("temp_min") != null ? main.getDouble("temp_min").toString() : "");
+            csvValues.add(main.getDouble("temp_max") != null ? main.getDouble("temp_max").toString() : "");
+        } else {
+            // make sure not to break csv structure on missing values
+            csvValues.add("");
+            csvValues.add("");
+            csvValues.add("");
+            csvValues.add("");
+            csvValues.add("");
+        }
+
         Long timeStamp = payload.getLong("dt");
-        String date = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date(timeStamp * 1000L));
+        csvValues.add(timeStamp != null
+                ? new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date(timeStamp * 1000L))
+                : "");
 
-        sb.append(location).append(",");
-        sb.append(date).append(",");
-        sb.append(latitude).append(",");
-        sb.append(longitude).append(",");
-        sb.append(temp).append("\n");
-
-        sendLine(request, location, sb.toString());
+        sendLine(request, location, String.join(",", csvValues));
     }
 
     private void sendLine(TransformationRequest request, String location, String payload) {
@@ -67,7 +86,7 @@ public class TransformationVerticle extends AbstractVerticle {
         JsonObject message = new JsonObject();
         message.put("pipeId", request.getPipeId());
         message.put("hopsFolder", request.getHopsFolder());
-        message.put("location", location.replaceAll("[^a-zA-Z]+","")); // remove special chars for use as file name
+        message.put("location", location != null ? location.replaceAll("[^a-zA-Z]+","") : ""); // remove special chars for use as file name
         message.put("payload", payload);
 
         Integer port = config().getInteger("target.port");

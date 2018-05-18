@@ -13,17 +13,18 @@ import model.WriteRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AggregationVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(AggregationVerticle.class);
 
-    private Set<String> aggregationIds;
+    private Map<String, String> fileNames;
     private Map<String, List<String>> buffer;
 
     private WebClient webClient;
@@ -31,7 +32,7 @@ public class AggregationVerticle extends AbstractVerticle {
     @Override
     public void start(Future<Void> future) {
         // concurrent map to prevent possible race conditions when timers end
-        aggregationIds = ConcurrentHashMap.newKeySet();
+        fileNames = new ConcurrentHashMap<>();
         buffer = new ConcurrentHashMap<>();
 
         webClient = WebClient.create(vertx);
@@ -45,36 +46,32 @@ public class AggregationVerticle extends AbstractVerticle {
         WriteRequest request = Json.decodeValue(message.body(), WriteRequest.class);
         LOG.debug("Received aggregation request for {}", request);
 
-        if (buffer.containsKey(request.getFilePath())) {
-            buffer.get(request.getFilePath()).add(request.getCsvData());
+        if (buffer.containsKey(request.getPipeId())) {
+            buffer.get(request.getPipeId()).add(request.getCsvData());
         } else {
+            String fileName = config().getString("fileDir") + "/"
+                    + new SimpleDateFormat("yyMMdd.HHmmss").format(new Date()) //eg 180518.102130
+                    + "_"
+                    + request.getLocation()
+                    + ".csv";
+
+            fileNames.put(request.getPipeId(), fileName);
+
             List<String> data = new ArrayList<>();
             data.add(request.getCsvHeaders() + "\n");
             data.add(request.getCsvData());
-            buffer.put(request.getFilePath(), data);
+            buffer.put(request.getPipeId(), data);
+
+            vertx.setTimer(config().getInteger("frequencyInMinutes") * 60000, timer -> {
+                exportFile(request);
+                buffer.remove(request.getPipeId());
+                fileNames.remove(request.getPipeId());
+            });
         }
-
-        // create a new timer when none has been created, remove timer ID when timer fires
-        vertx.fileSystem().exists(request.getFilePath(), handler -> {
-            if (handler.succeeded()) {
-                LOG.debug("Timers currently running: {}", aggregationIds);
-                if (!aggregationIds.contains(request.getPipeId())) {
-                    vertx.setTimer(config().getInteger("frequencyInMinutes") * 60000, timer -> {
-                        exportFile(request);
-                        buffer.remove(request.getFilePath());
-                        aggregationIds.remove(request.getPipeId());
-                    });
-
-                    aggregationIds.add(request.getPipeId());
-                }
-            } else {
-                LOG.error("Failed to set export timer for pipe with ID [{}]", request.getPipeId());
-            }
-        });
     }
 
     private void writeToFilePeriodically() {
-        buffer.forEach((filePath, data) -> vertx.fileSystem().open(filePath, new OpenOptions().setAppend(true), ar -> {
+        buffer.forEach((pipeId, data) -> vertx.fileSystem().open(fileNames.get(pipeId), new OpenOptions().setAppend(true), ar -> {
             if (ar.succeeded()) {
                 AsyncFile ws = ar.result();
 
@@ -85,20 +82,20 @@ public class AggregationVerticle extends AbstractVerticle {
 
                 // clean up
                 ws.close();
-                buffer.get(filePath).clear();
+                buffer.get(pipeId).clear();
             } else {
-                LOG.error("Could not open file [{}]", filePath);
+                LOG.error("Could not open file [{}]", fileNames.get(pipeId));
             }
         }));
     }
 
     private void exportFile(WriteRequest request) {
-        LOG.debug("Exporting file [{}]", request.getFilePath());
+        LOG.debug("Exporting file [{}]", fileNames.get(request.getPipeId()));
 
         JsonObject message = new JsonObject();
         message.put("pipeId", request.getPipeId());
         message.put("hopsFolder", request.getHopsFolder());
-        message.put("payload", request.getFilePath());
+        message.put("payload", fileNames.get(request.getPipeId()));
 
         Integer port = config().getInteger("target.port");
         String host = config().getString("target.host");

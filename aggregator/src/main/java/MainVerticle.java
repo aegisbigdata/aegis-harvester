@@ -12,6 +12,9 @@ import model.WriteRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class MainVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
@@ -94,17 +97,13 @@ public class MainVerticle extends AbstractVerticle {
         LOG.debug("Received request with body {}", context.getBodyAsString());
 
         JsonObject message = context.getBodyAsJson();
+        String pipeId = message.getString("pipeId");
         String hopsFolder = message.getString("hopsFolder");
+        String location = message.getString("location");
         String csvHeaders = message.getString("csvHeaders");
         String csvData = message.getString("payload");
 
-        // TODO generate robust file names
-        String pipeId = message.getString("pipeId");
-        String filePath = config.getString("fileDir") + "/"
-                + message.getString("location")
-                + ".csv";
-
-        WriteRequest request = new WriteRequest(pipeId, hopsFolder, filePath, csvHeaders, csvData);
+        WriteRequest request = new WriteRequest(pipeId, hopsFolder, location, csvHeaders, csvData);
         vertx.eventBus().send(Constants.MSG_AGGREGATE, Json.encode(request));
 
         context.response()

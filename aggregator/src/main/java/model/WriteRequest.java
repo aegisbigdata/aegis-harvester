@@ -4,17 +4,17 @@ public class WriteRequest {
 
     private String pipeId;
     private String hopsFolder;
-    private String filePath;
+    private String location;
     private String csvHeaders;
     private String csvData;
 
     public WriteRequest() {
     }
 
-    public WriteRequest(String pipeId, String hopsFolder, String filePath, String csvHeaders, String csvData) {
+    public WriteRequest(String pipeId, String hopsFolder, String location, String csvHeaders, String csvData) {
         this.pipeId = pipeId;
         this.hopsFolder = hopsFolder;
-        this.filePath = filePath;
+        this.location = location;
         this.csvHeaders = csvHeaders;
         this.csvData = csvData;
     }
@@ -35,12 +35,12 @@ public class WriteRequest {
         this.hopsFolder = hopsFolder;
     }
 
-    public String getFilePath() {
-        return filePath;
+    public String getLocation() {
+        return location;
     }
 
-    public void setFilePath(String filePath) {
-        this.filePath = filePath;
+    public void setLocation(String location) {
+        this.location = location;
     }
 
     public String getCsvHeaders() {
@@ -64,9 +64,9 @@ public class WriteRequest {
         return "WriteRequest{" +
                 "pipeId='" + pipeId + '\'' +
                 ", hopsFolder='" + hopsFolder + '\'' +
-                ", filePath='" + filePath + '\'' +
+                ", location='" + location + '\'' +
                 ", csvHeaders='" + csvHeaders + '\'' +
-                ", data='" + csvData + '\'' +
+                ", csvData='" + csvData + '\'' +
                 '}';
     }
 }

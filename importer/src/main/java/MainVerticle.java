@@ -1,18 +1,18 @@
 import io.vertx.config.ConfigRetriever;
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
+import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import model.Constants;
-import model.ImportRequest;
+import model.DataSendRequest;
+import model.OwmFetchRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static model.Constants.*;
@@ -37,7 +38,7 @@ public class MainVerticle extends AbstractVerticle {
         LOG.info("Launching importer...");
 
         Future<Void> steps = loadConfig()
-                .compose(handler -> bootstrapVerticle())
+                .compose(handler -> bootstrapVerticles())
                 .compose(handler -> startServer());
 
         steps.setHandler(handler -> {
@@ -55,8 +56,8 @@ public class MainVerticle extends AbstractVerticle {
 
         String jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
         vertx.fileSystem().delete(jobFile, handler -> {
-           if (handler.failed())
-               LOG.warn("Failed to clean up file [{}]", jobFile);
+            if (handler.failed())
+                LOG.warn("Failed to clean up file [{}]", jobFile);
         });
     }
 
@@ -77,22 +78,18 @@ public class MainVerticle extends AbstractVerticle {
     }
 
 
-    private Future<Void> bootstrapVerticle() {
-        Future<Void> future = Future.future();
+    private CompositeFuture bootstrapVerticles() {
 
         DeploymentOptions options = new DeploymentOptions()
                 .setConfig(config)
                 .setWorker(true);
 
-        vertx.deployVerticle(ImporterVerticle.class.getName(), options, handler -> {
-            if (handler.succeeded()) {
-                future.complete();
-            } else {
-                future.fail("Failed to deploy importer verticle: " + handler.cause());
-            }
-        });
+        List<Future> deploymentFutures = new ArrayList<>();
+        deploymentFutures.add(startVerticle(options, OwmImporterVerticle.class.getName()));
+        deploymentFutures.add(startVerticle(options, DataSenderVerticle.class.getName()));
 
-        return future;
+        return CompositeFuture.join(deploymentFutures);
+
     }
 
     private Future<Void> startServer() {
@@ -100,9 +97,10 @@ public class MainVerticle extends AbstractVerticle {
         Integer port = config.getInteger("http.port");
 
         Router router = Router.router(vertx);
-        router.route().handler(BodyHandler.create());
+        router.route().handler(BodyHandler.create().setUploadsDirectory(config.getString("tmpDir")));
         router.get("/running").handler(this::runningJobshandler);
-        router.post("/weather").handler(this::weatherHandler);
+        router.post("/owm").handler(this::fetchDataFromOwm);
+        router.post("/custom").handler(this::handleCustomData);
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -134,7 +132,7 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private void weatherHandler(RoutingContext context) {
+    private void fetchDataFromOwm(RoutingContext context) {
         List<String> runningJobs = new ArrayList<>();
         getRunningJobsFromFile(jobFile).setHandler(handler -> {
             if (handler.succeeded()) {
@@ -147,19 +145,19 @@ public class MainVerticle extends AbstractVerticle {
             context.response().putHeader("Content-Type", "application/json");
 
             try {
-                ImportRequest request = Json.decodeValue(context.getBody().toString(), ImportRequest.class);
+                OwmFetchRequest request = Json.decodeValue(context.getBody().toString(), OwmFetchRequest.class);
 
                 if (request.getPipeId() == null || runningJobs.contains(request.getPipeId())) {
                     response.put("message", "Please provide a unique pipe ID (pipeId)");
                     context.response().setStatusCode(400);
-                } else if (!TYPE_BBOX.equals(request.getType()) && !TYPE_LOCATION.equals(request.getType())) {
+                } else if (!OWM_TYPE_BBOX.equals(request.getType()) && !OWM_TYPE_LOCATION.equals(request.getType())) {
                     response.put("message", "Unknown location type provided (" + request.getType() + ")");
                     context.response().setStatusCode(400);
                 } else if (request.getDurationInHours() != 0 && request.getDurationInHours() * 60 < request.getFrequencyInMinutes()) {
                     response.put("message", "Frequency lower than total duration");
                     context.response().setStatusCode(400);
                 } else {
-                    vertx.eventBus().send(Constants.MSG_IMPORT, context.getBodyAsString());
+                    vertx.eventBus().send(Constants.MSG_IMPORT_OWM, context.getBodyAsString());
 
                     writeJobToFile(jobFile, request.getPipeId());
                     context.response().setStatusCode(202);
@@ -171,6 +169,81 @@ public class MainVerticle extends AbstractVerticle {
 
             context.response().end(response.encode());
         });
+    }
+
+    private void handleCustomData(RoutingContext context) {
+        List<String> runningJobs = new ArrayList<>();
+        getRunningJobsFromFile(jobFile).setHandler(handler -> {
+            if (handler.succeeded()) {
+                runningJobs.addAll(handler.result());
+            } else {
+                LOG.warn("Could not retrieve running jobs, collisions may occur");
+            }
+
+            JsonObject response = new JsonObject();
+            context.response().putHeader("Content-Type", "application/json");
+
+            MultiMap attributes = context.request().formAttributes();
+            LOG.debug("Attributes received: {}", attributes.toString());
+
+            String pipeId = attributes.get("pipeId");
+            String hopsFolder = attributes.get("hopsFolder");
+
+            if (pipeId != null && !runningJobs.contains(pipeId)) {
+                if (hopsFolder != null && !hopsFolder.isEmpty()) {
+
+                    //writeJobToFile(jobFile, pipeId);
+                    handleCsvFiles(pipeId, hopsFolder, context.fileUploads());
+
+                    context.response().setStatusCode(202);
+                } else {
+                    response.put("message", "Missing form values");
+                    context.response().setStatusCode(400);
+                }
+            } else {
+                response.put("message", "Please provide a unique pipe ID (pipeId)");
+                context.response().setStatusCode(400);
+            }
+
+            context.response().end(response.encode());
+        });
+    }
+
+    private void handleCsvFiles(String pipeId, String hopsFolder, Set<FileUpload> files) {
+        String url = "http://"
+                + config.getString("target.host") + ":"
+                + config.getInteger("target.port")
+                + config.getString("target.endpoint.csv");
+
+        for (FileUpload file : files) {
+            // TODO chunk file
+            vertx.fileSystem().readFile(file.fileName(), fileHandler -> {
+                if (fileHandler.succeeded()) {
+                    String csv = fileHandler.result().toString();
+                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, url, csv);
+                    LOG.debug("Sending {}", sendRequest.toString());
+
+                    vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
+                    removeJobFromFile(config.getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, pipeId);
+                } else {
+                    LOG.error("Could not open file [{}]", file.fileName());
+                }
+            });
+        }
+    }
+
+    private Future<Void> startVerticle(DeploymentOptions options, String className) {
+        Future<Void> future = Future.future();
+
+        vertx.deployVerticle(className, options, handler -> {
+            if (handler.succeeded()) {
+                future.complete();
+            } else {
+                future.fail("Failed to deploy : " + className + " ,cause : " + handler.cause());
+            }
+        });
+
+        return future;
     }
 
     private Future<List<String>> getRunningJobsFromFile(String filePath) {
@@ -206,6 +279,20 @@ public class MainVerticle extends AbstractVerticle {
                 ws.write(chunk);
             } else {
                 LOG.error("Could not open file [{}]", filePath);
+            }
+        });
+    }
+
+    private void removeJobFromFile(String filePath, String jobId) {
+        vertx.fileSystem().readFile(filePath, readHandler -> {
+            if (readHandler.succeeded()) {
+                String content = readHandler.result().toString().replace(jobId + "\n", "");
+                vertx.fileSystem().writeFile(filePath, Buffer.buffer(content), writeHandler -> {
+                    if (writeHandler.failed())
+                        LOG.warn("Could not delete job [{}] from file [{}]: {}", jobId, filePath, writeHandler.cause());
+                });
+            } else {
+                LOG.warn("File [{}] does not exist, skipping deletion", filePath);
             }
         });
     }

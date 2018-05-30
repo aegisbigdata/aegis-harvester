@@ -6,7 +6,8 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import model.Constants;
-import model.ImportRequest;
+import model.DataSendRequest;
+import model.OwmFetchRequest;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -23,31 +24,35 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static model.Constants.TYPE_BBOX;
+import static model.Constants.OWM_TYPE_BBOX;
 
-public class ImporterVerticle extends AbstractVerticle {
+public class OwmImporterVerticle extends AbstractVerticle {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ImporterVerticle.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OwmImporterVerticle.class);
 
     private HttpClient httpClient;
 
     @Override
     public void start(Future<Void> future) {
-        vertx.eventBus().consumer(Constants.MSG_IMPORT, this::getWeatherData);
+        vertx.eventBus().consumer(Constants.MSG_IMPORT_OWM, this::getWeatherData);
 
         httpClient = HttpClients.createDefault();
         future.complete();
     }
 
     private void getWeatherData(Message<String> message) {
-        ImportRequest request = Json.decodeValue(message.body(), ImportRequest.class);
+        OwmFetchRequest request = Json.decodeValue(message.body(), OwmFetchRequest.class);
 
         String apiKey = config().getString("owmApiKey");
-        String url = "http://api.openweathermap.org";
+        String owmUrl = "http://api.openweathermap.org";
+        String destinationUrl = "http://"
+                + config().getString("target.host") + ":"
+                + config().getInteger("target.port")
+                + config().getString("target.endpoint.owm");
 
         StringBuilder params = new StringBuilder("/data/2.5/");     // StringBuilder so result is permitted in lambda expression
 
-        if (TYPE_BBOX.equals(request.getType())) {
+        if (OWM_TYPE_BBOX.equals(request.getType())) {
             params.append("box/city?bbox=").append(request.getValue());
         } else {
             params.append("weather?id=").append(request.getValue());
@@ -59,7 +64,7 @@ public class ImporterVerticle extends AbstractVerticle {
         AtomicLong triggerCounter = new AtomicLong(0);  // atomic so variable is permitted in lambda expression
         LOG.debug("Importing [{}] times for pipe with ID [{}]", totalTicks, request.getPipeId());
 
-        getOwmApiData(url + params.toString(), request);   // periodic timer waits before first request
+        getOwmApiData(owmUrl + params.toString(), destinationUrl, request);   // periodic timer waits before first request
 
         // duration of 0 hours is defined to trigger exactly once
         if (request.getDurationInHours() > 0) {
@@ -70,17 +75,17 @@ public class ImporterVerticle extends AbstractVerticle {
                     LOG.debug("Pipe with ID [{}] done", request.getPipeId());
                 } else {
                     triggerCounter.addAndGet(1);
-                    getOwmApiData(url + params.toString(), request);
+                    getOwmApiData(owmUrl + params.toString(), destinationUrl, request);
                 }
             });
         }
     }
 
-    private void getOwmApiData(String url, ImportRequest request) {
-        LOG.debug("Request URL: {}", url);
+    private void getOwmApiData(String owmUrl, String destinationUrl, OwmFetchRequest request) {
+        LOG.debug("Request URL: {}", owmUrl);
 
         vertx.executeBlocking(future -> {
-            HttpGet httpGet = new HttpGet(url);
+            HttpGet httpGet = new HttpGet(owmUrl);
 
             try {
                 HttpResponse response = httpClient.execute(httpGet);
@@ -93,23 +98,15 @@ public class ImporterVerticle extends AbstractVerticle {
                     LOG.warn("OWM API request returned status [{}]", status);
                     future.fail("Bad status code: " + status);
                 } else {
-                    List<Future> sendFutures = new ArrayList<>();
-
-                    if (TYPE_BBOX.equals(request.getType())) {
+                    if (OWM_TYPE_BBOX.equals(request.getType())) {
                         for (Object obj : body.getJsonArray("list")) {
-                            sendFutures.add(sendWeatherData(request, (JsonObject) obj));
+                            DataSendRequest dataSendRequest = new DataSendRequest(request.getPipeId(), request.getHopsFolder(), destinationUrl, (String) obj);
+                            vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                         }
                     } else {
-                        sendFutures.add(sendWeatherData(request, body));
+                        DataSendRequest dataSendRequest = new DataSendRequest(request.getPipeId(), request.getHopsFolder(), destinationUrl, body.toString());
+                        vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                     }
-
-                    CompositeFuture.all(sendFutures).setHandler(handler -> {
-                        if (handler.succeeded()) {
-                            future.complete();
-                        } else {
-                            future.fail("At least one piece of data could not be sent");
-                        }
-                    });
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -118,57 +115,12 @@ public class ImporterVerticle extends AbstractVerticle {
             }
         }, result -> {
             if (result.failed())
-                LOG.debug("Importing weather data from URL [{}] failed: {}", url, result.cause());
+                LOG.debug("Importing weather data from URL [{}] failed: {}", owmUrl, result.cause());
         });
-    }
-
-    private Future<Void> sendWeatherData(ImportRequest request, JsonObject payload) {
-        Future<Void> future = Future.future();
-
-        String url = "http://"
-                + config().getString("target.host") + ":"
-                + config().getInteger("target.port")
-                + config().getString("target.endpoint");
-
-        JsonObject message = new JsonObject();
-        message.put("pipeId", request.getPipeId());
-        message.put("hopsFolder", request.getHopsFolder());
-        message.put("payload", payload.toString());
-
-        vertx.executeBlocking(handler -> {
-            try {
-                HttpPost postRequest = new HttpPost(url);
-                postRequest.setHeader("Content-Type", "application/json");
-
-                HttpEntity entity = new ByteArrayEntity(message.encode().getBytes("UTF-8"));
-                postRequest.setEntity(entity);
-
-                HttpResponse response = httpClient.execute(postRequest);
-                int status = response.getStatusLine().getStatusCode();
-
-                if (status < 200 || status > 400) {
-                    LOG.warn("POST request returned status [{}]", status);
-                    handler.fail("Bad status code: " + status);
-                } else {
-                    handler.complete();
-                }
-            } catch (IOException e) {
-                handler.fail("POST request to [{}] failed: " + e.getMessage());
-            }
-        }, res -> {
-            if (res.succeeded()) {
-                future.complete();
-            } else {
-                LOG.debug("POST request to [{}] returned [{}]", url, res.result());
-                future.fail(res.cause());
-            }
-        });
-
-        return future;
     }
 
     // calculates the total number of times data should be read from an endpoint
-    private long computeNumberOfTicks(ImportRequest request) {
+    private long computeNumberOfTicks(OwmFetchRequest request) {
 
         // sanitize inputs
         int durationInHours = request.getDurationInHours() >= 0

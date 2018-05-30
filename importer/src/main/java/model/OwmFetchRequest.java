@@ -1,6 +1,6 @@
 package model;
 
-public class ImportRequest {
+public class OwmFetchRequest {
 
     private String pipeId;
     private String hopsFolder;
@@ -60,7 +60,7 @@ public class ImportRequest {
 
     @Override
     public String toString() {
-        return "ImportRequest{" +
+        return "OwmFetchRequest{" +
                 "pipeId='" + pipeId + '\'' +
                 ", hopsFolder='" + hopsFolder + '\'' +
                 ", type='" + type + '\'' +

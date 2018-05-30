@@ -30,9 +30,11 @@ Periodically Fetches data from the [OpenWeatherMap API](https://openweathermap.o
 
 ## API
 
+### OpenWeatherMap
+
 To trigger the fetching of data a `POST` request must be sent to
 
-    {url}/weather
+    {url}/owm
     
 containing a JSON body with the data shown in the table below. All values are mandatory.
 
@@ -46,6 +48,24 @@ containing a JSON body with the data shown in the table below. All values are ma
 |frequencyInMinutes| The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. |
 
 A frequency higher than the duration (for durations > 0) is not allowed.
+
+### Push CSV _WIP_
+
+In order to push weather data from another source a `POST` request must be sent to
+
+    {url}/custom
+
+containing a JSON body with the data shown in the table below. All values are mandatory.
+
+|Key|Description|
+|:--- |:---|
+|pipeId| Unique value identifying the job |
+|hopsFolder| The hopsworks folder the resulting file will be uploaded to |
+|type| Currently only `csv` is supported |
+|payload| Properly escaped data |
+
+
+### Status
 
 A list of currently running pipes can be obtained by sending a `GET` request to 
 

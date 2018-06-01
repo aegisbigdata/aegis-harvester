@@ -1,5 +1,4 @@
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
@@ -7,21 +6,17 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import model.Constants;
 import model.DataSendRequest;
+import model.DataType;
 import model.OwmFetchRequest;
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static model.Constants.OWM_TYPE_BBOX;
@@ -34,7 +29,7 @@ public class OwmImporterVerticle extends AbstractVerticle {
 
     @Override
     public void start(Future<Void> future) {
-        vertx.eventBus().consumer(Constants.MSG_IMPORT_OWM, this::getWeatherData);
+        vertx.eventBus().consumer(DataType.OWM.getEventBusAddress(), this::getWeatherData);
 
         httpClient = HttpClients.createDefault();
         future.complete();
@@ -48,7 +43,7 @@ public class OwmImporterVerticle extends AbstractVerticle {
         String destinationUrl = "http://"
                 + config().getString("target.host") + ":"
                 + config().getInteger("target.port")
-                + config().getString("target.endpoint.owm");
+                + config().getString("target.endpoint");
 
         StringBuilder params = new StringBuilder("/data/2.5/");     // StringBuilder so result is permitted in lambda expression
 
@@ -100,11 +95,13 @@ public class OwmImporterVerticle extends AbstractVerticle {
                 } else {
                     if (OWM_TYPE_BBOX.equals(request.getType())) {
                         for (Object obj : body.getJsonArray("list")) {
-                            DataSendRequest dataSendRequest = new DataSendRequest(request.getPipeId(), request.getHopsFolder(), destinationUrl, (String) obj);
+                            DataSendRequest dataSendRequest =
+                                    new DataSendRequest(request.getPipeId(), request.getHopsFolder(), destinationUrl, DataType.OWM, (String) obj);
                             vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                         }
                     } else {
-                        DataSendRequest dataSendRequest = new DataSendRequest(request.getPipeId(), request.getHopsFolder(), destinationUrl, body.toString());
+                        DataSendRequest dataSendRequest =
+                                new DataSendRequest(request.getPipeId(), request.getHopsFolder(), destinationUrl, DataType.OWM, body.toString());
                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                     }
                 }

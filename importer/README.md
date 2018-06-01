@@ -68,7 +68,6 @@ An example using curl is shown below:
 
     curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F upload=@/path/to/file.csv
 
-
 ### Status
 
 A list of currently running pipes can be obtained by sending a `GET` request to 

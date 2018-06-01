@@ -2,13 +2,16 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
+import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.handler.BodyHandler;
 import model.Constants;
+import model.DataType;
 import model.TransformationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +44,7 @@ public class MainVerticle extends AbstractVerticle {
         Future<Void> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
-            if(handler.succeeded()) {
+            if (handler.succeeded()) {
                 config = handler.result();
                 future.complete();
             } else {
@@ -59,7 +62,7 @@ public class MainVerticle extends AbstractVerticle {
                 .setConfig(config)
                 .setWorker(true);
 
-        vertx.deployVerticle(TransformationVerticle.class.getName(), options, handler -> {
+        vertx.deployVerticle(OwmTransformationVerticle.class.getName(), options, handler -> {
             if (handler.succeeded()) {
                 future.complete();
             } else {
@@ -76,7 +79,7 @@ public class MainVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
-        router.post("/transform").handler(this::handleTransformation);
+        router.post("/transform").handler(this::dispatchRequest);
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -91,19 +94,33 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private void handleTransformation(RoutingContext context) {
+    private void dispatchRequest(RoutingContext context) {
         try {
             LOG.debug("Received request with body {}", context.getBodyAsString());
 
-            Json.decodeValue(context.getBody().toString(), TransformationRequest.class);
-            vertx.eventBus().send(Constants.MSG_TRANSFORM, context.getBodyAsString());
+            TransformationRequest request = Json.decodeValue(context.getBody().toString(), TransformationRequest.class);
+            HttpServerResponse response = context.response();
 
-            context.response()
-                    .setStatusCode(202) // accepted
-                    .putHeader("Content-Type", "application/json")
+            switch (request.getDataType()) {
+                case OWM:
+                    vertx.eventBus().send(DataType.OWM.getEventBusAddress(), context.getBodyAsString());
+                    response.setStatusCode(202);
+                    break;
+                case CSV:
+                    vertx.eventBus().send(DataType.CSV.getEventBusAddress(), context.getBodyAsString());
+                    response.setStatusCode(202);
+                    break;
+                default:
+                    // should never happen
+                    LOG.error("Invalid data type provided");
+                    response.setStatusCode(400);
+                    break;
+            }
+
+            response.putHeader("Content-Type", "application/json")
                     .end();
+
         } catch (DecodeException e) {
-            e.printStackTrace();
             LOG.debug("Invalid request received");
             context.response()
                     .setStatusCode(400)

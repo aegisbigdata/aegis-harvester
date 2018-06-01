@@ -12,6 +12,7 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import model.Constants;
 import model.DataSendRequest;
+import model.DataType;
 import model.OwmFetchRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -211,7 +212,7 @@ public class MainVerticle extends AbstractVerticle {
         String url = "http://"
                 + config.getString("target.host") + ":"
                 + config.getInteger("target.port")
-                + config.getString("target.endpoint.csv");
+                + config.getString("target.endpoint");
 
         for (FileUpload file : files) {
             LOG.debug("Uploading file [{}]", file.uploadedFileName());
@@ -219,13 +220,13 @@ public class MainVerticle extends AbstractVerticle {
             vertx.fileSystem().readFile(file.uploadedFileName(), fileHandler -> {
                 if (fileHandler.succeeded()) {
                     String csv = fileHandler.result().toString();
-                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, url, csv);
+                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, url, DataType.CSV, csv);
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
                     removeJobFromFile(config.getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, pipeId);
                 } else {
-                    LOG.error("Could not open file [{}]", file.fileName());
+                    LOG.error("Could not open file [{}]", file.uploadedFileName());
                 }
             });
         }

@@ -4,8 +4,7 @@
 
   "target.host" : "127.0.0.1",
   "target.port" : 8081,
-  "target.endpoint.owm" : "/owm",
-  "target.endpoint.csv" : "/csv",
+  "target.endpoint" : "/transform",
 
   "owmApiKey": ""
 }

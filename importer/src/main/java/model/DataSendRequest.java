@@ -5,14 +5,16 @@ public class DataSendRequest {
     private String pipeId;
     private String hopsFolder;
     private String url;
+    private DataType dataType;
     private String payload;
 
     public DataSendRequest() {}
 
-    public DataSendRequest(String pipeId, String hopsFolder, String url, String payload) {
+    public DataSendRequest(String pipeId, String hopsFolder, String url, DataType dataType, String payload) {
         this.pipeId = pipeId;
         this.hopsFolder = hopsFolder;
         this.url = url;
+        this.dataType = dataType;
         this.payload = payload;
     }
 
@@ -38,6 +40,14 @@ public class DataSendRequest {
 
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public DataType getDataType() {
+        return dataType;
+    }
+
+    public void setDataType(DataType dataType) {
+        this.dataType = dataType;
     }
 
     public String getPayload() {

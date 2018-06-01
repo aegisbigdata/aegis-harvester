@@ -1,6 +1,7 @@
 # Importer
 
-Periodically Fetches data from the [OpenWeatherMap API](https://openweathermap.org/api).
+Prepares weather data for further processing by either fetching data periodically from the [OpenWeatherMap API](https://openweathermap.org/api)
+or providing a file upload for CSV data.
 
 ## Setup
 
@@ -49,20 +50,23 @@ containing a JSON body with the data shown in the table below. All values are ma
 
 A frequency higher than the duration (for durations > 0) is not allowed.
 
-### Push CSV _WIP_
+### Push CSV 
 
 In order to push weather data from another source a `POST` request must be sent to
 
     {url}/custom
 
-containing a JSON body with the data shown in the table below. All values are mandatory.
+containing multipart/form-data with key-value pairs containing the data shown in the table below. All values are mandatory.
 
 |Key|Description|
 |:--- |:---|
 |pipeId| Unique value identifying the job |
 |hopsFolder| The hopsworks folder the resulting file will be uploaded to |
-|type| Currently only `csv` is supported |
-|payload| Properly escaped data |
+|upload| Path to a local file |
+
+An example using curl is shown below:
+
+    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F upload=@/path/to/file.csv
 
 
 ### Status

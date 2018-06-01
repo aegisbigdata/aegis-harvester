@@ -184,16 +184,14 @@ public class MainVerticle extends AbstractVerticle {
             context.response().putHeader("Content-Type", "application/json");
 
             MultiMap attributes = context.request().formAttributes();
-            LOG.debug("Attributes received: {}", attributes.toString());
-
             String pipeId = attributes.get("pipeId");
             String hopsFolder = attributes.get("hopsFolder");
 
             if (pipeId != null && !runningJobs.contains(pipeId)) {
                 if (hopsFolder != null && !hopsFolder.isEmpty()) {
 
-                    //writeJobToFile(jobFile, pipeId);
                     handleCsvFiles(pipeId, hopsFolder, context.fileUploads());
+                    writeJobToFile(jobFile, pipeId);
 
                     context.response().setStatusCode(202);
                 } else {
@@ -216,8 +214,9 @@ public class MainVerticle extends AbstractVerticle {
                 + config.getString("target.endpoint.csv");
 
         for (FileUpload file : files) {
+            LOG.debug("Uploading file [{}]", file.uploadedFileName());
             // TODO chunk file
-            vertx.fileSystem().readFile(file.fileName(), fileHandler -> {
+            vertx.fileSystem().readFile(file.uploadedFileName(), fileHandler -> {
                 if (fileHandler.succeeded()) {
                     String csv = fileHandler.result().toString();
                     DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, url, csv);

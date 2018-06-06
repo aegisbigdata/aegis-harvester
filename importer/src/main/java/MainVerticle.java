@@ -78,7 +78,6 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-
     private CompositeFuture bootstrapVerticles() {
 
         DeploymentOptions options = new DeploymentOptions()
@@ -90,7 +89,6 @@ public class MainVerticle extends AbstractVerticle {
         deploymentFutures.add(startVerticle(options, DataSenderVerticle.class.getName()));
 
         return CompositeFuture.join(deploymentFutures);
-
     }
 
     private Future<Void> startServer() {
@@ -191,8 +189,9 @@ public class MainVerticle extends AbstractVerticle {
             if (pipeId != null && !runningJobs.contains(pipeId)) {
                 if (hopsFolder != null && !hopsFolder.isEmpty()) {
 
-                    handleCsvFiles(pipeId, hopsFolder, context.fileUploads());
                     writeJobToFile(jobFile, pipeId);
+                    handleCsvFiles(pipeId, hopsFolder, context.fileUploads());
+                    removeJobFromFile(jobFile, pipeId);
 
                     context.response().setStatusCode(202);
                 } else {
@@ -209,10 +208,6 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void handleCsvFiles(String pipeId, String hopsFolder, Set<FileUpload> files) {
-        String url = "http://"
-                + config.getString("target.host") + ":"
-                + config.getInteger("target.port")
-                + config.getString("target.endpoint");
 
         for (FileUpload file : files) {
             LOG.debug("Uploading file [{}]", file.uploadedFileName());
@@ -220,7 +215,7 @@ public class MainVerticle extends AbstractVerticle {
             vertx.fileSystem().readFile(file.uploadedFileName(), fileHandler -> {
                 if (fileHandler.succeeded()) {
                     String csv = fileHandler.result().toString();
-                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, url, DataType.CSV, csv);
+                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, DataType.CSV, csv);
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));

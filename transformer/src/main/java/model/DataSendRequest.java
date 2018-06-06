@@ -4,16 +4,16 @@ public class DataSendRequest {
 
     private String pipeId;
     private String hopsFolder;
-    private DataType dataType;
-    private String payload;
+    private String location;
+    private String csvPayload;
 
     public DataSendRequest() {}
 
-    public DataSendRequest(String pipeId, String hopsFolder, DataType dataType, String payload) {
+    public DataSendRequest(String pipeId, String hopsFolder, String location, String csvPayload) {
         this.pipeId = pipeId;
         this.hopsFolder = hopsFolder;
-        this.dataType = dataType;
-        this.payload = payload;
+        this.location = location;
+        this.csvPayload = csvPayload;
     }
 
     public String getPipeId() {
@@ -32,20 +32,20 @@ public class DataSendRequest {
         this.hopsFolder = hopsFolder;
     }
 
-    public DataType getDataType() {
-        return dataType;
+    public String getLocation() {
+        return location;
     }
 
-    public void setDataType(DataType dataType) {
-        this.dataType = dataType;
+    public void setLocation(String location) {
+        this.location = location;
     }
 
-    public String getPayload() {
-        return payload;
+    public String getCsvPayload() {
+        return csvPayload;
     }
 
-    public void setPayload(String payload) {
-        this.payload = payload;
+    public void setCsvPayload(String csvPayload) {
+        this.csvPayload = csvPayload;
     }
 
     @Override
@@ -53,8 +53,8 @@ public class DataSendRequest {
         return "DataSendRequest{" +
                 "pipeId='" + pipeId + '\'' +
                 ", hopsFolder='" + hopsFolder + '\'' +
-                ", dataType=" + dataType +
-                ", payload='" + payload + '\'' +
+                ", location='" + location + '\'' +
+                ", csvPayload='" + csvPayload + '\'' +
                 '}';
     }
 }

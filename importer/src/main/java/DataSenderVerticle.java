@@ -38,9 +38,14 @@ public class DataSenderVerticle extends AbstractVerticle {
             DataSendRequest request = Json.decodeValue(message.body(), DataSendRequest.class);
             LOG.debug("Received {}", request.toString());
 
+            String url = "http://"
+                    + config().getString("target.host") + ":"
+                    + config().getInteger("target.port")
+                    + config().getString("target.endpoint");
+
             vertx.executeBlocking(handler -> {
                 try {
-                    HttpPost postRequest = new HttpPost(request.getUrl());
+                    HttpPost postRequest = new HttpPost(url);
                     postRequest.setHeader("Content-Type", "application/json");
 
                     HttpEntity entity = new ByteArrayEntity(message.body().getBytes("UTF-8"));
@@ -62,7 +67,7 @@ public class DataSenderVerticle extends AbstractVerticle {
                 if (res.succeeded()) {
                     future.complete();
                 } else {
-                    LOG.debug("POST request to [{}] returned [{}]", request.getUrl(), res.result());
+                    LOG.debug("POST request to [{}] returned [{}]", url, res.result());
                     future.fail(res.cause());
                 }
             });

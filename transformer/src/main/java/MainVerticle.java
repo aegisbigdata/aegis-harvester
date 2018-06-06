@@ -1,5 +1,6 @@
 import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServerResponse;
@@ -8,13 +9,14 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.handler.BodyHandler;
-import model.Constants;
 import model.DataType;
 import model.TransformationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -28,7 +30,7 @@ public class MainVerticle extends AbstractVerticle {
         LOG.info("Launching transformer...");
 
         Future<Void> steps = loadConfig()
-                .compose(handler -> bootstrapVerticle())
+                .compose(handler -> bootstrapVerticles())
                 .compose(handler -> startServer());
 
         steps.setHandler(handler -> {
@@ -55,18 +57,28 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private Future<Void> bootstrapVerticle() {
-        Future<Void> future = Future.future();
+    private CompositeFuture bootstrapVerticles() {
 
         DeploymentOptions options = new DeploymentOptions()
                 .setConfig(config)
                 .setWorker(true);
 
-        vertx.deployVerticle(OwmTransformationVerticle.class.getName(), options, handler -> {
+        List<Future> deploymentFutures = new ArrayList<>();
+        deploymentFutures.add(startVerticle(options, OwmTransformationVerticle.class.getName()));
+        deploymentFutures.add(startVerticle(options, CsvTransformationVerticle.class.getName()));
+        deploymentFutures.add(startVerticle(options, DataSenderVerticle.class.getName()));
+
+        return CompositeFuture.join(deploymentFutures);
+    }
+
+    private Future<Void> startVerticle(DeploymentOptions options, String className) {
+        Future<Void> future = Future.future();
+
+        vertx.deployVerticle(className, options, handler -> {
             if (handler.succeeded()) {
                 future.complete();
             } else {
-                future.fail("Failed to deploy transformation verticle: " + handler.cause());
+                future.fail("Failed to deploy : " + className + " ,cause : " + handler.cause());
             }
         });
 

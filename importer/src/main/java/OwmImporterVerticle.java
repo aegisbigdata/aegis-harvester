@@ -40,10 +40,6 @@ public class OwmImporterVerticle extends AbstractVerticle {
 
         String apiKey = config().getString("owmApiKey");
         String owmUrl = "http://api.openweathermap.org";
-        String destinationUrl = "http://"
-                + config().getString("target.host") + ":"
-                + config().getInteger("target.port")
-                + config().getString("target.endpoint");
 
         StringBuilder params = new StringBuilder("/data/2.5/");     // StringBuilder so result is permitted in lambda expression
 
@@ -59,7 +55,7 @@ public class OwmImporterVerticle extends AbstractVerticle {
         AtomicLong triggerCounter = new AtomicLong(0);  // atomic so variable is permitted in lambda expression
         LOG.debug("Importing [{}] times for pipe with ID [{}]", totalTicks, request.getPipeId());
 
-        getOwmApiData(owmUrl + params.toString(), destinationUrl, request);   // periodic timer waits before first request
+        getOwmApiData(owmUrl + params.toString(), request);   // periodic timer waits before first request
 
         // duration of 0 hours is defined to trigger exactly once
         if (request.getDurationInHours() > 0) {
@@ -70,13 +66,13 @@ public class OwmImporterVerticle extends AbstractVerticle {
                     LOG.debug("Pipe with ID [{}] done", request.getPipeId());
                 } else {
                     triggerCounter.addAndGet(1);
-                    getOwmApiData(owmUrl + params.toString(), destinationUrl, request);
+                    getOwmApiData(owmUrl + params.toString(), request);
                 }
             });
         }
     }
 
-    private void getOwmApiData(String owmUrl, String destinationUrl, OwmFetchRequest request) {
+    private void getOwmApiData(String owmUrl, OwmFetchRequest request) {
         LOG.debug("Request URL: {}", owmUrl);
 
         vertx.executeBlocking(future -> {
@@ -96,12 +92,12 @@ public class OwmImporterVerticle extends AbstractVerticle {
                     if (OWM_TYPE_BBOX.equals(request.getType())) {
                         for (Object obj : body.getJsonArray("list")) {
                             DataSendRequest dataSendRequest =
-                                    new DataSendRequest(request.getPipeId(), request.getHopsFolder(), destinationUrl, DataType.OWM, (String) obj);
+                                    new DataSendRequest(request.getPipeId(), request.getHopsFolder(), DataType.OWM, (String) obj);
                             vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                         }
                     } else {
                         DataSendRequest dataSendRequest =
-                                new DataSendRequest(request.getPipeId(), request.getHopsFolder(), destinationUrl, DataType.OWM, body.toString());
+                                new DataSendRequest(request.getPipeId(), request.getHopsFolder(), DataType.OWM, body.toString());
                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                     }
                 }

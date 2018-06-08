@@ -63,10 +63,49 @@ containing multipart/form-data with key-value pairs containing the data shown in
 |pipeId| Unique value identifying the job |
 |hopsFolder| The hopsworks folder the resulting file will be uploaded to |
 |upload| Path to a local file |
+|mapping| Instructions for transforming csv data. See below for a more thorough explanation |
+
+##### Transform CSV
+
+The supplied CSV file can be transformed in various ways.    
+Each transformation needs to be specified in a mapping script. 
+The transformations will be executed in the order they are listed.
+A sample JSON structure for each transformation type is shown below. 
+Numbers indicate the indices of the columns to be transformed.
+All transformations must be contained within the root node `mapping`.
+
+1. Rename headers
+        
+        {
+            "renameHeaders" : [
+                {   
+                    "old": "oldHeader",
+                    "new": "newHeader
+                }
+            ]   
+        }
+    
+2. Merge columns
+    
+        {
+            "mergeColumns" : [
+                [ 1, 2, 3 ],
+                [ 4, 5, 6 ]               
+            ]
+        }
+        
+3. Convert timestamps
+        
+        {
+            "convertTimestamps" : [ 1, 5, 8 ]   
+        }
+        
+
+##### Sample call
 
 An example using curl is shown below:
 
-    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F upload=@/path/to/file.csv
+    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"mapping":{"renameHeaders":[{"old":"trip_id","new":"tripId"}],"mergeColumns":[[2, 3]],"convertTimeStamp":[5]}}' -F upload=@/path/to/file.csv
 
 ### Status
 

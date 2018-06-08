@@ -18,6 +18,9 @@ public class OwmTransformationVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
 
+    private static final String CSV_HEADERS = "Location,Time,Latitude,Longitude,Avg. Temperature,Pressure,Humidity," +
+            "Min. Temperature,Max. Temperature,Visibility,Wind Speed,Wind Direction,Cloudiness";
+
     @Override
     public void start(Future<Void> future) {
         vertx.eventBus().consumer(Constants.MSG_TRANSFORM, this::handleTransformation);
@@ -86,7 +89,7 @@ public class OwmTransformationVerticle extends AbstractVerticle {
 
         String csv = String.join(",", csvValues) + "\n";
         DataSendRequest sendRequest =
-                new DataSendRequest(transformationRequest.getPipeId(), transformationRequest.getHopsFolder(), location, csv);
+                new DataSendRequest(transformationRequest.getPipeId(), transformationRequest.getHopsFolder(), location, csv, CSV_HEADERS);
 
         vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
     }

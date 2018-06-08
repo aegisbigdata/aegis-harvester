@@ -110,7 +110,7 @@ public class MainVerticle extends AbstractVerticle {
         try {
             LOG.debug("Received request with body {}", context.getBodyAsString());
 
-            TransformationRequest request = Json.decodeValue(context.getBody().toString(), TransformationRequest.class);
+            TransformationRequest request = Json.decodeValue(context.getBodyAsString(), TransformationRequest.class);
             HttpServerResponse response = context.response();
 
             switch (request.getDataType()) {

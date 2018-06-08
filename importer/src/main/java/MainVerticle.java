@@ -182,24 +182,31 @@ public class MainVerticle extends AbstractVerticle {
             JsonObject response = new JsonObject();
             context.response().putHeader("Content-Type", "application/json");
 
-            MultiMap attributes = context.request().formAttributes();
-            String pipeId = attributes.get("pipeId");
-            String hopsFolder = attributes.get("hopsFolder");
+            try {
+                MultiMap attributes = context.request().formAttributes();
+                String pipeId = attributes.get("pipeId");
+                String hopsFolder = attributes.get("hopsFolder");
+                JsonObject csvMapping = new JsonObject(attributes.get("mapping"));
 
-            if (pipeId != null && !runningJobs.contains(pipeId)) {
-                if (hopsFolder != null && !hopsFolder.isEmpty()) {
+                if (pipeId != null && !runningJobs.contains(pipeId)) {
+                    if (hopsFolder != null && !hopsFolder.isEmpty()) {
 
-                    writeJobToFile(jobFile, pipeId);
-                    handleCsvFiles(pipeId, hopsFolder, context.fileUploads());
-                    removeJobFromFile(jobFile, pipeId);
+                        writeJobToFile(jobFile, pipeId);
+                        handleCsvFiles(pipeId, hopsFolder, context.fileUploads(), csvMapping);
+                        removeJobFromFile(jobFile, pipeId);
 
-                    context.response().setStatusCode(202);
+                        context.response().setStatusCode(202);
+                    } else {
+                        response.put("message", "Missing form values");
+                        context.response().setStatusCode(400);
+                    }
                 } else {
-                    response.put("message", "Missing form values");
+                    response.put("message", "Please provide a unique pipe ID (pipeId)");
                     context.response().setStatusCode(400);
                 }
-            } else {
-                response.put("message", "Please provide a unique pipe ID (pipeId)");
+            } catch (DecodeException e) {
+                LOG.debug("Invalid mapping script provided");
+                response.put("message", "Invalid mapping script provided");
                 context.response().setStatusCode(400);
             }
 
@@ -207,7 +214,7 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private void handleCsvFiles(String pipeId, String hopsFolder, Set<FileUpload> files) {
+    private void handleCsvFiles(String pipeId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript) {
 
         for (FileUpload file : files) {
             LOG.debug("Uploading file [{}]", file.uploadedFileName());
@@ -215,7 +222,12 @@ public class MainVerticle extends AbstractVerticle {
             vertx.fileSystem().readFile(file.uploadedFileName(), fileHandler -> {
                 if (fileHandler.succeeded()) {
                     String csv = fileHandler.result().toString();
-                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, DataType.CSV, csv);
+                    LOG.debug("TMP: {}", csv);
+                    JsonObject payload = new JsonObject()
+                            .put("mapping", mappingScript)
+                            .put("csv", csv);
+
+                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, DataType.CSV, payload.toString());
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));

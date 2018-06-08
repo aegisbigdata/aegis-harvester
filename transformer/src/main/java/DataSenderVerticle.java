@@ -35,8 +35,7 @@ public class DataSenderVerticle extends AbstractVerticle {
         json.put("pipeId", request.getPipeId());
         json.put("hopsFolder", request.getHopsFolder());
         json.put("location", request.getLocation() != null ? request.getLocation().replaceAll("[^a-zA-Z]+","") : ""); // remove special chars for use as file name
-        json.put("csvHeaders", "Location,Time,Latitude,Longitude,Avg. Temperature,Pressure,Humidity," +
-                "Min. Temperature,Max. Temperature,Visibility,Wind Speed,Wind Direction,Cloudiness");
+        json.put("csvHeaders", request.getCsvHeaders());
         json.put("payload", request.getCsvPayload());
 
         Integer port = config().getInteger("target.port");

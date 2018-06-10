@@ -44,7 +44,7 @@ public class AggregationVerticle extends AbstractVerticle {
 
     private void aggregate(Message<String> message) {
         WriteRequest request = Json.decodeValue(message.body(), WriteRequest.class);
-        LOG.debug("Received aggregation request for {}", request);
+        LOG.debug("Received {}", request.toString());
 
         if (buffer.containsKey(request.getPipeId())) {
             buffer.get(request.getPipeId()).add(request.getCsvData());

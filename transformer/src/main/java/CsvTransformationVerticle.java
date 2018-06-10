@@ -2,12 +2,12 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import model.Constants;
 import model.DataSendRequest;
 import model.DataType;
 import model.TransformationRequest;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +39,24 @@ public class CsvTransformationVerticle extends AbstractVerticle {
         if (mapping != null) {
             LOG.debug("Mapping loaded: {}", mapping.toString());
 
+            // prepare merge
+            List<List<Integer>> columnsToMerge = new ArrayList<>();
+            if (mapping.getJsonArray("mergeColumns") != null) {
+                mapping.getJsonArray("mergeColumns").getList().forEach(setToMerge -> {
+
+                    columnsToMerge.add((List<Integer>) setToMerge);
+                });
+            }
+
+            // prepare convert
+            List<Integer> columnsToConvert = new ArrayList<>();
+            if (mapping.getJsonArray("convertTimeStamps") != null) {
+                columnsToConvert = new ArrayList<>(mapping.getJsonArray("convertTimestamps").getList());
+            }
+
+            csv = transformCsv(lines.subList(1, lines.size()), columnsToMerge, columnsToConvert);
+
+            // handle headers
             if (mapping.getJsonArray("renameHeaders") != null) {
 
                 // extract rules for renaming headers
@@ -48,41 +66,32 @@ public class CsvTransformationVerticle extends AbstractVerticle {
                     renameRules.put(rule.getString("old"), rule.getString("new"));
                 });
 
+                // add rules from merging columns
+                // TODO
+
                 headers = renameHeaders(Arrays.asList(lines.get(0).split(",")), renameRules);
             } else {
                 headers = lines.get(0);
             }
 
-            csv = transformCsv(lines, payload.getJsonObject("mapping"));
+
         } else {
             headers = lines.get(0);
             csv = String.join("\n", lines.subList(1, lines.size()));
         }
 
-        DataSendRequest sendRequest = new DataSendRequest(request.getPipeId(), request.getHopsFolder(), "localFile", csv, headers);
+        DataSendRequest sendRequest = new DataSendRequest(request.getPipeId(), request.getHopsFolder(), "localFile", headers, csv);
         vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
     }
 
-    private String transformCsv(ArrayList<String> rows, JsonObject mapping) {
+    private String transformCsv(List<String> rows, List<List<Integer>> columnsToMerge, List<Integer> columnsToConvert) {
 
-        // prepare merge
-        List<List<Integer>> columnsToMerge = new ArrayList<>();
-        if (mapping.getJsonArray("mergeColumns") != null) {
-            mapping.getJsonArray("mergeColumns").getList().forEach(setToMerge -> {
-                columnsToMerge.add((List<Integer>) setToMerge);
-            });
-        }
         LOG.debug("Merging columns [{}]", Collections.singletonList(columnsToMerge));
-
-        // prepare convert
-        List<Integer> columnsToConvert = new ArrayList<>();
-        if (mapping.getJsonArray("convertTimeStamps") != null) {
-            columnsToConvert = new ArrayList<>(mapping.getJsonArray("convertTimestamps").getList());
-        }
         LOG.debug("Converting columns [{}]", Collections.singletonList(columnsToConvert));
 
         for (int i = 0; i < rows.size(); i++) {
             List<String> row = Arrays.asList(rows.get(i).split(","));
+            row = removeQuotes(row);
 
             row = mergeColumns(row, columnsToMerge);
             row = convertDate(row, columnsToConvert);
@@ -94,18 +103,19 @@ public class CsvTransformationVerticle extends AbstractVerticle {
 
     private String renameHeaders(List<String> headers, Map<String, String> renameRules) {
         LOG.debug("Renaming headers: [{}]", Collections.singletonList(renameRules));
+        headers = removeQuotes(headers);
 
-        renameRules.forEach((oldName, newName) -> {
+        for (Map.Entry<String, String> entry : renameRules.entrySet()) {
             for (int i = 0; i < headers.size(); i++) {
-                LOG.debug("Header: [{}]     Old: [{}]    New: [{}]", headers.get(i), oldName, newName);
-                if (oldName.equals(headers.get(i)))
-                    headers.set(i, newName);
+                if (entry.getKey().equals(headers.get(i)))
+                    headers.set(i, entry.getValue());
             }
-        });
+        }
 
         return String.join(",", headers);
     }
 
+    // TODO rename headers
     private List<String> mergeColumns(List<String> row, List<List<Integer>> columnIndices) {
         // store columns to cut separately to prevent index errors when removing separately
         List<Integer> columnsToCut = new ArrayList<>();
@@ -113,7 +123,9 @@ public class CsvTransformationVerticle extends AbstractVerticle {
         columnIndices.forEach(setToMerge -> {
             StringBuilder newVal = new StringBuilder();
 
-            setToMerge.forEach(index -> newVal.append(row.get(index)));
+            setToMerge.forEach(index -> newVal
+                    .append(" ")
+                    .append(row.get(index)));
 
             // set new value to first column to be merged
             row.set(setToMerge.get(0), newVal.toString());
@@ -121,7 +133,7 @@ public class CsvTransformationVerticle extends AbstractVerticle {
         });
 
         // remove all other columns
-        return cutColumns(row, columnsToCut);
+        return cutColumns(new ArrayList<>(row), columnsToCut);
     }
 
     private List<String> convertDate(List<String> row, List<Integer> columnIndicies) {
@@ -130,10 +142,28 @@ public class CsvTransformationVerticle extends AbstractVerticle {
         return row;
     }
 
-    private List<String> cutColumns(List<String> row, List<Integer> columnIndices) {
-        // iterate in reverse order to prevent index out of bounds errors
-        ListIterator<Integer> reverseIterator = columnIndices.listIterator(columnIndices.size());
-        reverseIterator.forEachRemaining(index -> row.remove(index.intValue()));
+    private List<String> cutColumns(ArrayList<String> row, List<Integer> columnIndices) {
+
+        // FIXME removing items from list in reverse order seems overly complicated
+        ListIterator<String> rowIterator = row.listIterator(row.size());
+        while (rowIterator.hasPrevious()) {
+            if (columnIndices.contains(rowIterator.previousIndex())) {
+                rowIterator.previous();
+                rowIterator.remove();
+            }
+
+            rowIterator.previous();
+        }
+
+        return row;
+    }
+
+    private List<String> removeQuotes(List<String> row) {
+        for (int i = 0; i < row.size(); i++) {
+            String sanitized = StringUtils.removeStart(StringUtils.removeEnd(row.get(i), "\""), "\"");
+            row.set(i, sanitized);
+        }
+
         return row;
     }
 }

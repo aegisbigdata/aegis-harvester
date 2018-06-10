@@ -89,7 +89,10 @@ All transformations must be contained within the root node `mapping`.
     
         {
             "mergeColumns" : [
-                [ 1, 2, 3 ],
+                {
+                    "header" : "newHeader"
+                    "columns" : [ 1, 2, 3 ],
+                }
                 [ 4, 5, 6 ]               
             ]
         }
@@ -105,7 +108,7 @@ All transformations must be contained within the root node `mapping`.
 
 An example using curl is shown below:
 
-    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"mapping":{"renameHeaders":[{"old":"trip_id","new":"tripId"}],"mergeColumns":[[2, 3]],"convertTimeStamp":[5]}}' -F upload=@/path/to/file.csv
+    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"renameHeaders":[{"old":"trip_id","new":"tripId"}],"mergeColumns":[[2, 3]],"convertTimeStamp":[5]}' -F upload=@/path/to/file.csv
 
 ### Status
 

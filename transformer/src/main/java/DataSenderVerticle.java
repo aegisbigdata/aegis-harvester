@@ -11,6 +11,8 @@ import model.DataSendRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.UUID;
+
 public class DataSenderVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
@@ -34,7 +36,9 @@ public class DataSenderVerticle extends AbstractVerticle {
         JsonObject json = new JsonObject();
         json.put("pipeId", request.getPipeId());
         json.put("hopsFolder", request.getHopsFolder());
-        json.put("location", request.getLocation() != null ? request.getLocation().replaceAll("[^a-zA-Z]+","") : ""); // remove special chars for use as file name
+        json.put("location", request.getLocation() != null
+                ? request.getLocation().replaceAll("[^a-zA-Z]+","") // remove special chars for use as file name
+                : "");
         json.put("csvHeaders", request.getCsvHeaders());
         json.put("payload", request.getCsvPayload());
 

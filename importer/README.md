@@ -74,7 +74,13 @@ A sample JSON structure for each transformation type is shown below.
 Numbers indicate the indices of the columns to be transformed.
 All transformations must be contained within the root node `mapping`.
 
-1. Rename headers
+1. Split CSV file
+
+        {
+            "splitColumn" : 1
+        }
+
+2. Rename headers
         
         {
             "renameHeaders" : [
@@ -85,30 +91,26 @@ All transformations must be contained within the root node `mapping`.
             ]   
         }
     
-2. Merge columns
+3. Merge columns
     
         {
             "mergeColumns" : [
-                {
-                    "header" : "newHeader"
-                    "columns" : [ 1, 2, 3 ],
-                }
+                [ 1, 2, 3 ],
                 [ 4, 5, 6 ]               
             ]
         }
         
-3. Convert timestamps
+4. Convert timestamps
         
         {
             "convertTimestamps" : [ 1, 5, 8 ]   
         }
-        
 
 ##### Sample call
 
 An example using curl is shown below:
 
-    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"renameHeaders":[{"old":"trip_id","new":"tripId"}],"mergeColumns":[[2, 3]],"convertTimeStamp":[5]}' -F upload=@/path/to/file.csv
+    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"splitColumn":2}, "renameHeaders":[{"old":"trip_id","new":"tripId"}], "mergeColumns":[[2, 3]], "convertTimeStamp":[5]}' -F upload=@/path/to/file.csv
 
 ### Status
 

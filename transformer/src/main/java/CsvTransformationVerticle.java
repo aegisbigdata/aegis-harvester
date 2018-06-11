@@ -32,29 +32,12 @@ public class CsvTransformationVerticle extends AbstractVerticle {
 
         // FIXME is this efficient?
         ArrayList<String> lines = new ArrayList<>(Arrays.asList(payload.getString("csv").split("\\R")));
-        String headers;
-        String csv;
+        List<String> headers;
+        Map<String, String> csv; // filename, content
 
         JsonObject mapping = payload.getJsonObject("mapping");
         if (mapping != null) {
             LOG.debug("Mapping loaded: {}", mapping.toString());
-
-            // prepare merge
-            List<List<Integer>> columnsToMerge = new ArrayList<>();
-            if (mapping.getJsonArray("mergeColumns") != null) {
-                mapping.getJsonArray("mergeColumns").getList().forEach(setToMerge -> {
-
-                    columnsToMerge.add((List<Integer>) setToMerge);
-                });
-            }
-
-            // prepare convert
-            List<Integer> columnsToConvert = new ArrayList<>();
-            if (mapping.getJsonArray("convertTimeStamps") != null) {
-                columnsToConvert = new ArrayList<>(mapping.getJsonArray("convertTimestamps").getList());
-            }
-
-            csv = transformCsv(lines.subList(1, lines.size()), columnsToMerge, columnsToConvert);
 
             // handle headers
             if (mapping.getJsonArray("renameHeaders") != null) {
@@ -66,27 +49,56 @@ public class CsvTransformationVerticle extends AbstractVerticle {
                     renameRules.put(rule.getString("old"), rule.getString("new"));
                 });
 
-                // add rules from merging columns
-                // TODO
-
                 headers = renameHeaders(Arrays.asList(lines.get(0).split(",")), renameRules);
             } else {
-                headers = lines.get(0);
+                headers = Arrays.asList(lines.get(0).split(","));
             }
 
+            csv = transformCsv(lines.subList(1, lines.size()), headers, mapping);
 
         } else {
-            headers = lines.get(0);
-            csv = String.join("\n", lines.subList(1, lines.size()));
+            headers = Arrays.asList(lines.get(0).split(","));
+            csv = new HashMap<>(1);
+            csv.put("localFile", String.join("\n", lines.subList(1, lines.size())));
         }
 
-        DataSendRequest sendRequest = new DataSendRequest(request.getPipeId(), request.getHopsFolder(), "localFile", headers, csv);
-        vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
+        csv.forEach((fileName, content) -> {
+            DataSendRequest sendRequest =
+                    new DataSendRequest(request.getPipeId(), request.getHopsFolder(), fileName, String.join(",", headers), content);
+
+            vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
+        });
     }
 
-    private String transformCsv(List<String> rows, List<List<Integer>> columnsToMerge, List<Integer> columnsToConvert) {
 
+    private Map<String, String> transformCsv(List<String> rows, List<String> headers, JsonObject mapping) {
+
+        // split files
+        Map<String, String> csv = new HashMap<>();
+        if (mapping.getInteger("splitCsvColumn") != null) {
+            csv = splitCsv(rows, headers, mapping.getInteger("splitCsvColumn"));
+        } else {
+            csv.put("localfile", String.join("\n", rows));
+        }
+
+        csv.forEach((fileName, fileContent) -> {
+            // TODO apply transformations on each
+        });
+
+        // prepare merge
+        List<List<Integer>> columnsToMerge = new ArrayList<>();
+        if (mapping.getJsonArray("mergeColumns") != null) {
+            mapping.getJsonArray("mergeColumns").getList().forEach(setToMerge -> {
+                columnsToMerge.add((List<Integer>) setToMerge);
+            });
+        }
         LOG.debug("Merging columns [{}]", Collections.singletonList(columnsToMerge));
+
+        // prepare convert
+        List<Integer> columnsToConvert = new ArrayList<>();
+        if (mapping.getJsonArray("convertTimeStamps") != null) {
+            columnsToConvert = new ArrayList<>(mapping.getJsonArray("convertTimestamps").getList());
+        }
         LOG.debug("Converting columns [{}]", Collections.singletonList(columnsToConvert));
 
         for (int i = 0; i < rows.size(); i++) {
@@ -98,10 +110,10 @@ public class CsvTransformationVerticle extends AbstractVerticle {
             rows.set(i, String.join(",", row));
         }
 
-        return String.join("\n", rows);
+        return csv;
     }
 
-    private String renameHeaders(List<String> headers, Map<String, String> renameRules) {
+    private List<String> renameHeaders(List<String> headers, Map<String, String> renameRules) {
         LOG.debug("Renaming headers: [{}]", Collections.singletonList(renameRules));
         headers = removeQuotes(headers);
 
@@ -112,7 +124,7 @@ public class CsvTransformationVerticle extends AbstractVerticle {
             }
         }
 
-        return String.join(",", headers);
+        return headers;
     }
 
     // TODO rename headers
@@ -127,8 +139,8 @@ public class CsvTransformationVerticle extends AbstractVerticle {
                     .append(" ")
                     .append(row.get(index)));
 
-            // set new value to first column to be merged
-            row.set(setToMerge.get(0), newVal.toString());
+            // remove leading whitespace and set new value to first column to be merged
+            row.set(setToMerge.get(0), newVal.toString().trim());
             columnsToCut.addAll(setToMerge.subList(1, setToMerge.size()));
         });
 
@@ -165,5 +177,31 @@ public class CsvTransformationVerticle extends AbstractVerticle {
         }
 
         return row;
+    }
+
+    // splits csv by differing values in a provided column specified by its index
+    private Map<String, String> splitCsv(List<String> rows, List<String> headers, Integer column) {
+
+        String baseFileName = headers.get(column) + "_";
+        Map<String, String> csvData = new HashMap<>();
+
+        if (column >= 0 && column < rows.size()) {
+            rows.forEach(row -> {
+                List<String> columnValues = Arrays.asList(row.split(","));
+
+                String fileName = baseFileName + columnValues.get(column);
+                String newCsv = row + "\n";
+                String existingCsv = csvData.get(fileName);
+
+                csvData.put(fileName, existingCsv == null
+                        ? newCsv
+                        : existingCsv + newCsv);
+            });
+        } else {
+            LOG.error("Column with index [{}] does not exist, returning entire file", column);
+            csvData.put("localFile", String.join("\n", rows));
+        }
+
+        return csvData;
     }
 }

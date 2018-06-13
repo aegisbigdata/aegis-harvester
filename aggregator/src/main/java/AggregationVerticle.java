@@ -43,28 +43,43 @@ public class AggregationVerticle extends AbstractVerticle {
         WriteRequest request = Json.decodeValue(message.body(), WriteRequest.class);
         LOG.debug("Received {}", request.toString());
 
-        if (buffer.containsKey(request.getPipeId())) {
-            buffer.get(request.getPipeId()).add(request.getCsvData());
+        String fileName = config().getString("fileDir") + "/"
+                + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()).replace(" ", "T") //eg 180518.102130
+                + "_"
+                + (!request.getBaseFileName().isEmpty()
+                    ? request.getBaseFileName()
+                    : UUID.randomUUID().toString())
+                + ".csv";
+
+        LOG.debug("Aggregating file [{}]", fileName);
+
+        if (request.getAggregate()) {
+            if (buffer.containsKey(request.getPipeId())) {
+                buffer.get(request.getPipeId()).add(request.getCsvData());
+            } else {
+                fileNames.put(request.getPipeId(), fileName);
+
+                List<String> data = new ArrayList<>();
+                data.add(request.getCsvHeaders() + "\n");
+                data.add(request.getCsvData());
+                buffer.put(request.getPipeId(), data);
+
+                vertx.setTimer(config().getInteger("frequencyInMinutes") * 60000, timer -> {
+                    exportFile(request);
+                    buffer.remove(request.getPipeId());
+                    fileNames.remove(request.getPipeId());
+                });
+            }
         } else {
-            String fileName = config().getString("fileDir") + "/"
-                    + new SimpleDateFormat("yyMMdd.HHmmss").format(new Date()) //eg 180518.102130
-                    + "_"
-                    + (!request.getLocation().isEmpty()
-                        ? request.getLocation()
-                        : UUID.randomUUID().toString())
-                    + ".csv";
-
             fileNames.put(request.getPipeId(), fileName);
+            String fileContent = request.getCsvHeaders() + "\n" + request.getCsvData();
 
-            List<String> data = new ArrayList<>();
-            data.add(request.getCsvHeaders() + "\n");
-            data.add(request.getCsvData());
-            buffer.put(request.getPipeId(), data);
-
-            vertx.setTimer(config().getInteger("frequencyInMinutes") * 60000, timer -> {
-                exportFile(request);
-                buffer.remove(request.getPipeId());
-                fileNames.remove(request.getPipeId());
+            vertx.fileSystem().writeFile(fileName, Buffer.buffer(fileContent), handler -> {
+                if (handler.succeeded()) {
+                    exportFile(request);
+                } else {
+                    LOG.error("Failed to write to file [{}] : {}", fileName, handler.cause());
+                }
             });
         }
     }

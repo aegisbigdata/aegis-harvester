@@ -28,8 +28,6 @@ public class CsvTransformationVerticle extends AbstractVerticle {
     private void handleTransformation(Message<String> message) {
         TransformationRequest request = Json.decodeValue(message.body(), TransformationRequest.class);
 
-        LOG.debug("Transforming {}", request.toString());
-
         JsonObject payload = new JsonObject(request.getPayload());
 
         // FIXME is this efficient?
@@ -52,7 +50,7 @@ public class CsvTransformationVerticle extends AbstractVerticle {
             String content = String.join("\n", file.getContent());
 
             DataSendRequest sendRequest =
-                    new DataSendRequest(request.getPipeId(), request.getHopsFolder(), file.getFileName(), headers, content);
+                    new DataSendRequest(request.getPipeId(), request.getHopsFolder(), file.getFileName(), headers, content, false);
 
             vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
         });
@@ -121,7 +119,6 @@ public class CsvTransformationVerticle extends AbstractVerticle {
         for (int i = 0; i < csvFile.getContent().size(); i++) {
 
             List<String> row = Arrays.asList(csvFile.getContent().get(i).split(","));
-            LOG.debug("Transforming row [{}]", row);
 
             row = applyQuotes(cutColumns(
                             new ArrayList<>(mergeColumns(
@@ -226,7 +223,7 @@ public class CsvTransformationVerticle extends AbstractVerticle {
         if (column != null && column >= 0 && column < csvFile.getContent().get(0).split(",").length) {
 
             Map<String, CsvFile> filesWithValues = new HashMap<>();
-            String baseFileName = csvFile.getHeaders().get(column) + "_";
+            String baseFileName = removeQuotes(csvFile.getHeaders()).get(column) + "_";
 
             csvFile.getContent().forEach(row -> {
                 List<String> columnValues = removeQuotes(Arrays.asList(row.split(",")));

@@ -96,11 +96,12 @@ public class MainVerticle extends AbstractVerticle {
         JsonObject message = context.getBodyAsJson();
         String pipeId = message.getString("pipeId");
         String hopsFolder = message.getString("hopsFolder");
-        String location = message.getString("location");
+        String baseFileName = message.getString("baseFileName");
         String csvHeaders = message.getString("csvHeaders");
         String csvData = message.getString("payload");
+        Boolean aggregate = message.getBoolean("aggregate");
 
-        WriteRequest request = new WriteRequest(pipeId, hopsFolder, location, csvHeaders, csvData);
+        WriteRequest request = new WriteRequest(pipeId, hopsFolder, baseFileName, csvHeaders, csvData, aggregate);
         vertx.eventBus().send(Constants.MSG_AGGREGATE, Json.encode(request));
 
         context.response()

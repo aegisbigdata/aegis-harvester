@@ -5,6 +5,7 @@ import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import model.Constants;
 import model.DataSendRequest;
+import model.DataType;
 import model.TransformationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,12 +19,12 @@ public class OwmTransformationVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
 
-    private static final String CSV_HEADERS = "Location,Time,Latitude,Longitude,Avg. Temperature,Pressure,Humidity," +
+    private static final String CSV_HEADERS = "Location,Time,Geopoint,Avg. Temperature,Pressure,Humidity," +
             "Min. Temperature,Max. Temperature,Visibility,Wind Speed,Wind Direction,Cloudiness";
 
     @Override
     public void start(Future<Void> future) {
-        vertx.eventBus().consumer(Constants.MSG_TRANSFORM, this::handleTransformation);
+        vertx.eventBus().consumer(DataType.OWM.getEventBusAddress(), this::handleTransformation);
 
         future.complete();
     }
@@ -41,19 +42,28 @@ public class OwmTransformationVerticle extends AbstractVerticle {
 
         Long timeStamp = payload.getLong("dt");
         csvValues.add(timeStamp != null
-                ? new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date(timeStamp * 1000L))
+                ? new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(timeStamp * 1000L)).replace(" ", "T")
                 : "");
 
         JsonObject coordinates = payload.getJsonObject("coord");
         if (coordinates != null) {
+            String geoPoint = "\"";
+
             // keys have different case depending on transformationRequest type (bbox vs locationId)
-            csvValues.add(coordinates.getDouble("Lat") != null
+            geoPoint += (coordinates.getDouble("Lon") != null
+                    ? coordinates.getDouble("Lon") != null ? coordinates.getDouble("Lon").toString() : ""
+                    : coordinates.getDouble("lon") != null ? coordinates.getDouble("lon").toString() : "");
+
+            geoPoint += ", ";
+
+            geoPoint += (coordinates.getDouble("Lat") != null
                     ? coordinates.getDouble("Lat") != null ? coordinates.getDouble("Lat").toString() : ""
                     : coordinates.getDouble("lat") != null ? coordinates.getDouble("lat").toString() : "");
 
-            csvValues.add(coordinates.getDouble("Lon") != null
-                    ? coordinates.getDouble("Lon") != null ? coordinates.getDouble("Lon").toString() : ""
-                    : coordinates.getDouble("lon") != null ? coordinates.getDouble("lon").toString() : "");
+            geoPoint += "\"";
+
+            csvValues.add(geoPoint);
+
         } else {
             // make sure not to break csv structure on missing values
             addEmptyValues(csvValues,2);
@@ -89,7 +99,7 @@ public class OwmTransformationVerticle extends AbstractVerticle {
 
         String csv = String.join(",", csvValues) + "\n";
         DataSendRequest sendRequest =
-                new DataSendRequest(transformationRequest.getPipeId(), transformationRequest.getHopsFolder(), location, csv, CSV_HEADERS);
+                new DataSendRequest(transformationRequest.getPipeId(), transformationRequest.getHopsFolder(), location, CSV_HEADERS, csv, true);
 
         vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
     }

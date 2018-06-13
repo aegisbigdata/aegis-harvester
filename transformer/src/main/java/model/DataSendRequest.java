@@ -4,18 +4,22 @@ public class DataSendRequest {
 
     private String pipeId;
     private String hopsFolder;
-    private String location;
+    private String baseFileName;
     private String csvHeaders;
     private String csvPayload;
 
+    // entire contents of request are written to file and exported when set to false
+    private Boolean aggregate;
+
     public DataSendRequest() {}
 
-    public DataSendRequest(String pipeId, String hopsFolder, String location, String csvHeaders, String csvPayload) {
+    public DataSendRequest(String pipeId, String hopsFolder, String baseFileName, String csvHeaders, String csvPayload, Boolean aggregate) {
         this.pipeId = pipeId;
         this.hopsFolder = hopsFolder;
-        this.location = location;
+        this.baseFileName = baseFileName;
         this.csvHeaders = csvHeaders;
         this.csvPayload = csvPayload;
+        this.aggregate = aggregate;
     }
 
     public String getPipeId() {
@@ -34,12 +38,12 @@ public class DataSendRequest {
         this.hopsFolder = hopsFolder;
     }
 
-    public String getLocation() {
-        return location;
+    public String getBaseFileName() {
+        return baseFileName;
     }
 
-    public void setLocation(String location) {
-        this.location = location;
+    public void setBaseFileName(String baseFileName) {
+        this.baseFileName = baseFileName;
     }
 
     public String getCsvHeaders() {
@@ -58,14 +62,23 @@ public class DataSendRequest {
         this.csvPayload = csvPayload;
     }
 
+    public Boolean getAggregate() {
+        return aggregate;
+    }
+
+    public void setAggregate(Boolean aggregate) {
+        this.aggregate = aggregate;
+    }
+
     @Override
     public String toString() {
         return "DataSendRequest{" +
                 "pipeId='" + pipeId + '\'' +
                 ", hopsFolder='" + hopsFolder + '\'' +
-                ", location='" + location + '\'' +
+                ", baseFileName='" + baseFileName + '\'' +
                 ", csvHeaders='" + csvHeaders + '\'' +
                 ", csvPayload='" + csvPayload + '\'' +
+                ", aggregate=" + aggregate +
                 '}';
     }
 }

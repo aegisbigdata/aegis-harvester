@@ -4,19 +4,23 @@ public class WriteRequest {
 
     private String pipeId;
     private String hopsFolder;
-    private String location;
+    private String baseFileName;
     private String csvHeaders;
     private String csvData;
+
+    // entire contents of request are written to file and exported when set to false
+    private Boolean aggregate;
 
     public WriteRequest() {
     }
 
-    public WriteRequest(String pipeId, String hopsFolder, String location, String csvHeaders, String csvData) {
+    public WriteRequest(String pipeId, String hopsFolder, String baseFileName, String csvHeaders, String csvData, Boolean aggregate) {
         this.pipeId = pipeId;
         this.hopsFolder = hopsFolder;
-        this.location = location;
+        this.baseFileName = baseFileName;
         this.csvHeaders = csvHeaders;
         this.csvData = csvData;
+        this.aggregate = aggregate;
     }
 
     public String getPipeId() {
@@ -35,12 +39,12 @@ public class WriteRequest {
         this.hopsFolder = hopsFolder;
     }
 
-    public String getLocation() {
-        return location;
+    public String getBaseFileName() {
+        return baseFileName;
     }
 
-    public void setLocation(String location) {
-        this.location = location;
+    public void setBaseFileName(String baseFileName) {
+        this.baseFileName = baseFileName;
     }
 
     public String getCsvHeaders() {
@@ -59,14 +63,23 @@ public class WriteRequest {
         this.csvData = csvData;
     }
 
+    public Boolean getAggregate() {
+        return aggregate;
+    }
+
+    public void setAggregate(Boolean aggregate) {
+        this.aggregate = aggregate;
+    }
+
     @Override
     public String toString() {
         return "WriteRequest{" +
                 "pipeId='" + pipeId + '\'' +
                 ", hopsFolder='" + hopsFolder + '\'' +
-                ", location='" + location + '\'' +
+                ", location='" + baseFileName + '\'' +
                 ", csvHeaders='" + csvHeaders + '\'' +
                 ", csvData='" + csvData + '\'' +
+                ", aggregate=" + aggregate +
                 '}';
     }
 }

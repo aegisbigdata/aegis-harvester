@@ -24,10 +24,7 @@ Aggregates CSV data in a file for a specified amount of time
         |fileDir| The directory in which the aggregation files will be stored |
         |frequencyInMinutes| Amount of time for which data is to be aggregated, in minutes |
  
-   "fileDir" : "/tmp",
-   "frequencyInMinutes" : 3
-
-3. Start the application
+2. Start the application
 
     ```
     $ mvn package && java -jar target/aggregator-fat.jar

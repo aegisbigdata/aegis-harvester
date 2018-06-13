@@ -156,7 +156,7 @@ public class MainVerticle extends AbstractVerticle {
                     response.put("message", "Frequency lower than total duration");
                     context.response().setStatusCode(400);
                 } else {
-                    vertx.eventBus().send(Constants.MSG_IMPORT_OWM, context.getBodyAsString());
+                    vertx.eventBus().send(DataType.OWM.getEventBusAddress(), context.getBodyAsString());
 
                     writeJobToFile(jobFile, request.getPipeId());
                     context.response().setStatusCode(202);
@@ -222,7 +222,6 @@ public class MainVerticle extends AbstractVerticle {
             vertx.fileSystem().readFile(file.uploadedFileName(), fileHandler -> {
                 if (fileHandler.succeeded()) {
                     String csv = fileHandler.result().toString();
-                    LOG.debug("TMP: {}", csv);
                     JsonObject payload = new JsonObject()
                             .put("mapping", mappingScript)
                             .put("csv", csv);

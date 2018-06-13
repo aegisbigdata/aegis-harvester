@@ -11,8 +11,6 @@ import model.DataSendRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.UUID;
-
 public class DataSenderVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(DataSenderVerticle.class);
@@ -31,16 +29,18 @@ public class DataSenderVerticle extends AbstractVerticle {
     private void sendLine(Message<String> message) {
         DataSendRequest request = Json.decodeValue(message.body(), DataSendRequest.class);
 
-        LOG.debug("Sending csv [{}]", request.getCsvHeaders() + "\n" + request.getCsvPayload());
+//        LOG.debug("Sending csv [{}]", request.getCsvHeaders() + "\n" + request.getCsvPayload());
+        LOG.debug("FileName [{}]", request.getBaseFileName());
 
         JsonObject json = new JsonObject();
         json.put("pipeId", request.getPipeId());
         json.put("hopsFolder", request.getHopsFolder());
-        json.put("location", request.getLocation() != null
-                ? request.getLocation().replaceAll("[^a-zA-Z]+","") // remove special chars for use as file name
+        json.put("baseFileName", request.getBaseFileName() != null
+                ? request.getBaseFileName().replaceAll("[^a-zA-Z0-9_]+","") // remove special chars for use as file name
                 : "");
         json.put("csvHeaders", request.getCsvHeaders());
         json.put("payload", request.getCsvPayload());
+        json.put("aggregate", request.getAggregate());
 
         Integer port = config().getInteger("target.port");
         String host = config().getString("target.host");

@@ -1,0 +1,77 @@
+openapi: 3.0.0
+
+info:
+  version: 0.0.1-alpha
+  title: Aggregator
+  x-logo:
+    url: ""
+
+servers:
+  - url: 'http://localhost:8082'
+    description: Local development server
+
+paths:
+  /aggregate:
+    post:
+      description: Aggregate CSV data in a file
+      summary: Aggregates CSV data for a set amount of time before POSTing metadata to the exporter
+      operationId: aggregate
+      requestBody:
+        description: Aggregation details
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/AggregationRequest'
+            examples:
+              exportRequestExample:
+                $ref: '#/components/examples/aggregationRequestExample'
+
+      responses:
+        '202':
+          description: Request accepted
+        '400':
+          description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
+
+components:
+  schemas:
+    AggregationRequest:
+      description: All data required for setting up a new aggregation or appending to an existing file
+      type: object
+      required:
+        - pipeId
+        - hopsFolder
+        - baseFileName
+        - csvHeaders
+        - payload
+        - aggregate
+      properties:
+        pipeId:
+            description: A unique ID to identify the pipe the request belongs to
+            type: string
+        hopsFolder:
+            description: The HopsFolder to upload the file to
+            type: string
+        baseFileName:
+            description: The base filename used for generating a unique file name
+            type: string
+        csvHeaders:
+            description: Comma separated CSV header names. Should have as many headers as the CSV data has columns
+            type: string
+        payload:
+            description: The actual CSV data, without the header fields
+            type: string
+        aggregate:
+            description: A flag indicating if the incoming data shall be aggregated or uploaded as is
+            type: boolean
+  examples:
+    aggregationRequestExample:
+      summary: A request to aggregate CSV data
+      value: {
+               "pipeId" : "samplePipe",
+               "hopsFolder" : "upload/myFolder",
+               "baseFileName" : "myFile",
+               "csvHeaders" : "header_1,header_2,header_3"
+               "payload" : "data_1,data_2,data_3",
+               "aggregate" : true
+             }

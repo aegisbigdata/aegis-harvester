@@ -1,0 +1,78 @@
+openapi: 3.0.0
+
+info:
+  version: 0.0.1-alpha
+  title: Transformer
+  x-logo:
+    url: ""
+
+servers:
+  - url: 'http://localhost:8081'
+    description: Local development server
+
+paths:
+  /transform:
+    post:
+      description: Transform OWM JSON data into CSV or transform existing CSV data
+      summary: Either transform JSON data provided by the OpenWeatherMap endpoints 'bbox' or 'locationId' int CSV by hardcoded means or manipulates existing CSV
+      operationId: transform
+      requestBody:
+        description: Transformation details
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/TransformationRequest'
+            examples:
+              owmTransformationExample:
+                $ref: '#/components/examples/owmTransformationExample'
+              csvTransformationExample:
+                $ref: '#/components/examples/csvTransformationExample'
+
+      responses:
+        '202':
+          description: Request accepted
+        '400':
+          description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
+
+components:
+  schemas:
+    TransformationRequest:
+      description: All data required for performing the desired transformation
+      type: object
+      required:
+        - pipeId
+        - hopsFolder
+        - dataType
+        - payload
+      properties:
+        pipeId:
+            description: A unique ID to identify the pipe the request belongs to
+            type: string
+        hopsFolder:
+            description: The HopsFolder to upload the file to
+            type: string
+        dataType:
+            description: Enum indication whether the payload consists of OWM or CSV data
+            type: string
+            enum: [OWM, CSV]
+        payload:
+            description: Either JSON containing OWM weather data or JSON containing 'csv' data and a 'mapping'
+            type: string
+  examples:
+    owmTransformationExample:
+      summary: A request to transform OWM data
+      value: {
+               "pipeId" : "samplePipe",
+               "hopsFolder" : "upload/myFolder",
+               "dataType" : "OWM",
+               "payload" : "{\"coord\":{\"lon\":14.44, ... }"
+             }
+    csvTransformationExample:
+      summary: A request to transform CSV data
+      value: {
+               "pipeId" : "samplePipe",
+               "hopsFolder" : "upload/myFolder",
+               "dataType" : "CSV",
+               "payload" : "{\"csv\" : \"data_1,data_2, ... \", \"mapping\" : \" see README for explanation of available mappings \"}"
+             }

@@ -1,0 +1,62 @@
+openapi: 3.0.0
+
+info:
+  version: 0.0.1-alpha
+  title: Exporter
+  x-logo:
+    url: ""
+
+servers:
+  - url: 'http://localhost:8083'
+    description: Local development server
+
+paths:
+  /export:
+    post:
+      description: Export a file to HopsWorks
+      summary: Reads a file from disk and uploads it to HopsWorks
+      operationId: export
+      requestBody:
+        description: File export details
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/FileExportRequest'
+            examples:
+              exportRequestExample:
+                $ref: '#/components/examples/exportRequestExample'
+
+      responses:
+        '202':
+          description: Request accepted
+        '400':
+          description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
+
+components:
+  schemas:
+    FileExportRequest:
+      description: PipeID, HopsFolder and FileName
+      type: object
+      required:
+        - pipeId
+        - hopsFolder
+        - payload
+      properties:
+        pipeId:
+            description: A unique ID to identify the pipe the request belongs to
+            type: string
+        hopsFolder:
+            description: The HopsFolder to upload the file to
+            type: string
+        payload:
+            description: The full path to a file on disk
+            type: string
+  examples:
+    exportRequestExample:
+      summary: A request to export a file
+      value: {
+               "pipeId" : "samplePipe",
+               "hopsFolder" : "upload/myFolder",
+               "payload" : "/path/to/file"
+             }

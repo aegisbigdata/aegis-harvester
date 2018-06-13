@@ -1,0 +1,131 @@
+openapi: 3.0.0
+
+info:
+  version: 0.0.1-alpha
+  title: Importer
+  x-logo:
+    url: ""
+
+servers:
+  - url: 'http://localhost:8080'
+    description: Local development server
+
+paths:
+  /owm:
+    post:
+      description: Fetch OWM weather data
+      summary: Periodically fetches OpenWeatherMap data
+      operationId: importOwm
+      requestBody:
+        description: OWM import details
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/OwmImportRequest'
+            examples:
+              owmImportExample:
+                $ref: '#/components/examples/owmImportExample'
+
+      responses:
+        '202':
+          description: Request accepted
+        '400':
+          description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
+
+  /custom:
+    post:
+      description: Upload CSV data
+      summary: Upload of CSV files
+      operationId: uploadCsv
+      requestBody:
+        description: CSV  upload details
+        required: true
+        content:
+          'multipart/formdata':
+            schema:
+              $ref: '#/components/schemas/CsvUploadRequest'
+            examples:
+              csvUploadExample:
+                $ref: '#/components/examples/csvUploadExample'
+
+      responses:
+        '202':
+          description: Request accepted
+        '400':
+          description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
+
+  /running:
+    get:
+      description: View running jobs
+      summary: Returns a JSON containing all job IDs currently stored in the jobFile
+      operationId: runningJobs
+      responses:
+        '200':
+          description: Request ok
+        '500':
+          description: Server failed to read jobFile
+
+components:
+  schemas:
+    OwmImportRequest:
+      description: All data required for importing OWM data
+      type: object
+      required:
+        - pipeId
+        - hopsFolder
+        - type
+        - value
+        - durationInHours
+        - frequencyInMinutes
+      properties:
+        pipeId:
+            description: A unique ID to identify the pipe the request belongs to
+            type: string
+        hopsFolder:
+            description: The HopsFolder to upload the file to
+            type: string
+        type:
+            description: Enum indication which type of OWM API shall be queried
+            type: string
+            enum: [BBOX, LOCATION]
+        value:
+            description: Either OWM bbox boundaries or a location ID, depending on the value of the field 'type'
+            type: string
+        durationInHours:
+            description: How long the pipeline should run for, in hours. A value < 1 will make the pipeline run exactly once
+            type: integer
+        frequencyInMinutes:
+            description: The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. A frequency higher than the duration (for durations > 0) is not allowed
+            type: integer
+
+    CsvUploadRequest:
+      description: All data required for uploading and processing CSV data
+      parameters:
+        - in: formData
+          name: pipeId
+          description: A unique ID to identify the pipe the request belongs to
+        - in: formData
+          name: hopsFolder
+          description: The HopsFolder to upload the file to
+        - in: formData
+          name: mapping
+          description: A mapping for transforming CSV. The syntax may be found in the transformer's README file
+        - in: formData
+          name: upload
+          description: Path to the CSV file to be uploaded
+
+  examples:
+    owmImportExample:
+      summary: A request to import OWM data every 10 minutes for 3 hours
+      value: {
+               "pipeId" : "samplePipe",
+               "hopsFolder" : "upload/myFolder",
+               "type" : "location",
+               "value" : "123456",
+               "durationInHours" : 3,
+               "frequencyInMinutes" : 10
+             }
+    csvUploadExample:
+      summary: A request to upload CSV data
+      value: curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"splitByColumn":2, "renameHeaders":[{"old":"trip_id","new":"tripId"}], "mergeColumns":[[2, 3]], "convertTimeStamps":[5]}' -F upload=@/path/to/file.csv

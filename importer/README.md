@@ -72,15 +72,8 @@ Each transformation needs to be specified in a mapping script.
 The transformations will be executed in the order they are listed.
 A sample JSON structure for each transformation type is shown below. 
 Numbers indicate the indices of the columns to be transformed.
-All transformations must be contained within the root node `mapping`.
 
-1. Split CSV file
-
-        {
-            "splitColumn" : 1
-        }
-
-2. Rename headers
+1. Rename headers
         
         {
             "renameHeaders" : [
@@ -90,8 +83,24 @@ All transformations must be contained within the root node `mapping`.
                 }
             ]   
         }
+        
+2. Convert timestamps
+        
+        {
+            "convertTimestamps" : [ 1, 5, 8 ]   
+        }
+        
+3. Switch columns
+        
+        {
+            "switchColumns" : [
+                [1, 2],
+                [2, 3]
+            ]
+        }
+
     
-3. Merge columns
+4. Merge columns
     
         {
             "mergeColumns" : [
@@ -99,18 +108,18 @@ All transformations must be contained within the root node `mapping`.
                 [ 4, 5, 6 ]               
             ]
         }
-        
-4. Convert timestamps
-        
+
+5. Split CSV file
+
         {
-            "convertTimestamps" : [ 1, 5, 8 ]   
-        }
+            "splitColumn" : 1
+        }        
 
 ##### Sample call
 
 An example using curl is shown below:
 
-    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"splitColumn":2}, "renameHeaders":[{"old":"trip_id","new":"tripId"}], "mergeColumns":[[2, 3]], "convertTimeStamp":[5]}' -F upload=@/path/to/file.csv
+    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"splitByColumn":2, "renameHeaders":[{"old":"trip_id","new":"tripId"}], "mergeColumns":[[2, 3]], "convertTimeStamps":[5]}' -F upload=@/path/to/file.csv
 
 ### Status
 

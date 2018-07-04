@@ -1,5 +1,5 @@
 {
-  "http.port" : 8083,
+  "http.port" : 8126,
   "aegis": {
     "url": "http://bbc6.sics.se:8080/hopsworks-api/api",
     "projectId": "1027",

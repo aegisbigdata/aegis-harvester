@@ -1,9 +1,9 @@
 {
-  "http.port" : 8080,
+  "http.port" : 8123,
   "tmpDir" : "/tmp",
 
   "target.host" : "127.0.0.1",
-  "target.port" : 8081,
+  "target.port" : 8124,
   "target.endpoint" : "/transform",
 
   "owmApiKey": ""

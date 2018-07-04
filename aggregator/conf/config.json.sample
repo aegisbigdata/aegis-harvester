@@ -1,8 +1,8 @@
 {
-  "http.port" : 8082,
+  "http.port" : 8125,
 
   "target.host" : "127.0.0.1",
-  "target.port" : 8083,
+  "target.port" : 8126,
   "target.endpoint" : "/export",
 
   "fileDir" : "/tmp",

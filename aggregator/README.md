@@ -26,6 +26,16 @@ Aggregates CSV data in a file for a specified amount of time
  
 2. Start the application
 
+* Vanilla
+
     ```
-    $ mvn package && java -jar target/aggregator-fat.jar
+    $ mvn clean package && java -jar target/aggregator-fat.jar
     ```
+
+* Docker
+
+    1. Start your docker daemon 
+    2. Build the application: `mvn clean package`
+    3. Adjust the port number (`EXPOSE` in the `Dockerfile`)
+    4. Build the image: `docker build -t aegis/aggregator .`
+    5. Run the image, adjusting the port number as set in step _iii_: `docker run -i -p 8125:8125 aegis/aggregator`

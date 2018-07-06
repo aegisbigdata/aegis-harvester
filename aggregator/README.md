@@ -5,16 +5,11 @@ Aggregates CSV data in a file for a specified amount of time
 ## Setup
 
 1. Install aggregator
-    * Clone repository
-    * Navigate into the cloned directory
-    * Copy the sample configuration
-
-        ```
-        $ cp conf/config.sample.json conf/config.json
-        ```
-
-    * Edit the configuration to your liking:
-
+    - Clone repository
+    - Navigate into the cloned directory
+    - Copy the sample configuration: `cp conf/config.sample.json conf/config.json`
+    - Edit the configuration to your liking:
+    
         |Key|Description|
         |:--- |:---|
         |http.port| The port this service will run on |
@@ -23,17 +18,16 @@ Aggregates CSV data in a file for a specified amount of time
         |target.endpoint| The relative URI of the service the aggregator will push it's data to |
         |fileDir| The directory in which the aggregation files will be stored |
         |frequencyInMinutes| Amount of time for which data is to be aggregated, in minutes |
- 
+     
 2. Start the application
 
-* Vanilla
+- Vanilla
 
     ```
     $ mvn clean package && java -jar target/aggregator-fat.jar
     ```
 
-* Docker
-
+- Docker
     1. Start your docker daemon 
     2. Build the application: `mvn clean package`
     3. Adjust the port number (`EXPOSE` in the `Dockerfile`)

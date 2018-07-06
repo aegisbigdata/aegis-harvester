@@ -14,15 +14,10 @@ Uploads files to Hopsworks.
     ```
 
 2. Install exporter
-    * Clone repository
-    * Navigate into the cloned directory
-    * Copy the sample configuration
-
-        ```
-        $ cp conf/config.sample.json conf/config.json
-        ```
-
-    * Edit the configuration to your liking:
+    - Clone repository
+    - Navigate into the cloned directory
+    - Copy the sample configuration: `$ cp conf/config.sample.json conf/config.json`
+    - Edit the configuration to your liking:
 
         |Key|Description|
         |:--- |:---|
@@ -31,14 +26,13 @@ Uploads files to Hopsworks.
 
 3. Start the application
 
-* Vanilla
+- Vanilla
 
     ```
     $ mvn clean package && java -jar target/exporter-fat.jar
     ```
 
-* Docker
-
+- Docker
     1. Start your docker daemon 
     2. Build the application: `mvn clean package`
     3. Adjust the port number (`EXPOSE` in the `Dockerfile`)

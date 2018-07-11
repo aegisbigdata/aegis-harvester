@@ -16,6 +16,9 @@ COPY conf/config.json $VERTICLE_HOME/
 RUN chown -R vertx $VERTICLE_HOME
 RUN chmod -R g+w $VERTICLE_HOME
 
+RUN mkdir /aggregated && chmod -R r+w /aggregated
+VOLUME /aggregated
+
 USER vertx
 
 # Launch the verticle

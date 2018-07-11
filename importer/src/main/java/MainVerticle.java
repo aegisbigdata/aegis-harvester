@@ -5,15 +5,13 @@ import io.vertx.core.file.AsyncFile;
 import io.vertx.core.file.OpenOptions;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
-import model.Constants;
-import model.DataSendRequest;
-import model.DataType;
-import model.OwmFetchRequest;
+import model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,6 +97,7 @@ public class MainVerticle extends AbstractVerticle {
         router.route().handler(BodyHandler.create().setUploadsDirectory(config.getString("tmpDir")));
         router.get("/running").handler(this::runningJobshandler);
         router.post("/owm").handler(this::fetchDataFromOwm);
+        router.post("/upload").handler(this::handleFileUpload);
         router.post("/custom").handler(this::handleCustomData);
 
         vertx.createHttpServer().requestHandler(router::accept)
@@ -170,7 +169,7 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private void handleCustomData(RoutingContext context) {
+    private void handleFileUpload(RoutingContext context) {
         List<String> runningJobs = new ArrayList<>();
         getRunningJobsFromFile(jobFile).setHandler(handler -> {
             if (handler.succeeded()) {
@@ -212,6 +211,37 @@ public class MainVerticle extends AbstractVerticle {
 
             context.response().end(response.encode());
         });
+    }
+
+    private void handleCustomData(RoutingContext context) {
+            JsonObject response = new JsonObject();
+            context.response().putHeader("Content-Type", "application/json");
+
+            try {
+                JsonObject request = new JsonObject(context.getBody().toString());
+                String pipeId = request.getString("pipeId");
+                String hopsFolder = request.getString("hopsFolder");
+                JsonArray payload = request.getJsonArray("payload");
+
+                if (pipeId == null) {
+                    response.put("message", "Please provide a pipe ID (pipeId)");
+                    context.response().setStatusCode(400);
+                } else {
+                    payload.forEach(obj -> {
+                        DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, DataType.CUSTOM, obj.toString());
+                        LOG.debug("Sending {}", sendRequest.toString());
+
+                        vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
+                    });
+
+                    context.response().setStatusCode(202);
+                }
+            } catch (DecodeException e) {
+                response.put("message", "Invalid JSON provided");
+                context.response().setStatusCode(400);
+            }
+
+            context.response().end(response.encode());
     }
 
     private void handleCsvFiles(String pipeId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript) {

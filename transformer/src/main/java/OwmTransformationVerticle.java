@@ -31,7 +31,6 @@ public class OwmTransformationVerticle extends AbstractVerticle {
 
     private void handleTransformation(Message<String> message) {
         TransformationRequest transformationRequest = Json.decodeValue(message.body(), TransformationRequest.class);
-
         LOG.debug("Transforming {}", transformationRequest);
 
         JsonObject payload = new JsonObject(transformationRequest.getPayload());

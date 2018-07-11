@@ -40,12 +40,12 @@ containing a JSON body with the data shown in the table below. All values are ma
 
 |Key|Description|
 |:--- |:---|
-|pipeId| Unique value identifying the job |
+|pipeId| Unique payload identifying the job |
 |hopsFolder| The hopsworks folder the resulting file will be uploaded to |
 |type| Either `bbox` or `location` |
-|value| Either the bbox coordinates or a location ID |
-|durationInHours| How long the pipeline should run for, in hours. A value < 1 will make the pipeline run exactly once. |
-|frequencyInMinutes| The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. |
+|payload| Either the bbox coordinates or a location ID |
+|durationInHours| How long the pipeline should run for, in hours. A payload < 1 will make the pipeline run exactly once. |
+|frequencyInMinutes| The interval at which data should be fetched, in minutes. A payload < 1 will make the pipeline not run. |
 
 A frequency higher than the duration (for durations > 0) is not allowed.
 
@@ -55,11 +55,11 @@ In order to push weather data from another source a `POST` request must be sent 
 
     {url}/custom
 
-containing multipart/form-data with key-value pairs containing the data shown in the table below. All values are mandatory.
+containing multipart/form-data with key-payload pairs containing the data shown in the table below. All values are mandatory.
 
 |Key|Description|
 |:--- |:---|
-|pipeId| Unique value identifying the job |
+|pipeId| Unique payload identifying the job |
 |hopsFolder| The hopsworks folder the resulting file will be uploaded to |
 |upload| Path to a local file |
 |mapping| Instructions for transforming csv data. See below for a more thorough explanation |

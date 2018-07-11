@@ -37,7 +37,6 @@ public class OwmImporterVerticle extends AbstractVerticle {
 
     private void getWeatherData(Message<String> message) {
         OwmFetchRequest request = Json.decodeValue(message.body(), OwmFetchRequest.class);
-LOG.debug("Received {}", request.toString() );
         String apiKey = config().getString("owmApiKey");
         String owmUrl = "http://api.openweathermap.org";
 

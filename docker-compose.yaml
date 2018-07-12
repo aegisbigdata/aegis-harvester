@@ -31,7 +31,7 @@ services:
       aegis:
         ipv4_address: 10.5.0.5
     volumes_from:
-      - aggregator:ro
+      - aggregator:rw
 
 volumes:
   aggregator-volume:

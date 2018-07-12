@@ -44,7 +44,7 @@ public class AggregationVerticle extends AbstractVerticle {
         LOG.debug("Received {}", request.toString());
 
         String fileName = config().getString("fileDir") + "/"
-                + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()).replace(" ", "T") //eg 180518.102130
+                + new SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(new Date()).replace(" ", "T")
                 + "_"
                 + (!request.getBaseFileName().isEmpty()
                     ? request.getBaseFileName()

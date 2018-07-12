@@ -4,6 +4,7 @@ ENV VERTICLE_FILE aggregator-fat.jar
 
 # Set the location of the verticles
 ENV VERTICLE_HOME /usr/verticles
+ENV AGGREGATION_DIR /aggregated
 
 EXPOSE 8125
 
@@ -16,8 +17,8 @@ COPY conf/config.json $VERTICLE_HOME/
 RUN chown -R vertx $VERTICLE_HOME
 RUN chmod -R g+w $VERTICLE_HOME
 
-RUN mkdir /aggregated && chmod -R r+w /aggregated
-VOLUME /aggregated
+RUN mkdir $AGGREGATION_DIR && chown -R vertx $AGGREGATION_DIR && chmod -R g+w $AGGREGATION_DIR
+VOLUME $AGGREGATION_DIR
 
 USER vertx
 

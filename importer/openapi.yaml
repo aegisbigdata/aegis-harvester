@@ -33,7 +33,29 @@ paths:
         '400':
           description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
 
-  /custom:
+  /ckan:
+    post:
+      description:
+      summary:
+      operationId: importCkan
+      requestBody:
+        description:
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/CkanImportRequest'
+            examples:
+              ckanImportExample:
+                $ref: '#/components/examples/ckanImportExample'
+
+      responses:
+        '202':
+          description: Request accepted
+        '400':
+          description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
+
+  /upload:
     post:
       description: Upload CSV data
       summary: Upload of CSV files
@@ -48,6 +70,28 @@ paths:
             examples:
               csvUploadExample:
                 $ref: '#/components/examples/csvUploadExample'
+
+      responses:
+        '202':
+          description: Request accepted
+        '400':
+          description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
+
+  /custom:
+    post:
+      description: Push data in one of the supported formats (currently only JSON)
+      summary: Import custom data
+      operationId: customImport
+      requestBody:
+        description: Custom data
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/CustomImportRequest'
+            examples:
+              customImportExample:
+                $ref: '#/components/examples/customImportExample'
 
       responses:
         '202':
@@ -99,6 +143,32 @@ components:
             description: The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. A frequency higher than the duration (for durations > 0) is not allowed
             type: integer
 
+    CkanImportRequest:
+      description:
+      type: object
+      required:
+        - pipeId
+        - hopsFolder
+        - url
+        - durationInHours
+        - frequencyInMinutes
+      properties:
+        pipeId:
+            description: A unique ID to identify the pipe the request belongs to
+            type: string
+        hopsFolder:
+            description: The HopsFolder to upload the file to
+            type: string
+        url:
+            describtion: The full Ckan API URL
+            type: string
+        durationInHours:
+            description: How long the pipeline should run for, in hours. A value < 1 will make the pipeline run exactly once
+            type: integer
+        frequencyInMinutes:
+            description: The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. A frequency higher than the duration (for durations > 0) is not allowed
+            type: integer
+
     CsvUploadRequest:
       description: All data required for uploading and processing CSV data
       parameters:
@@ -115,6 +185,82 @@ components:
           name: upload
           description: Path to the CSV file to be uploaded
 
+    CustomImportRequest:
+          description: All data required for importing custom data
+          type: object
+          required:
+            - pipeId
+            - hopsFolder
+            - payload
+          properties:
+            pipeId:
+                description: A unique ID to identify the pipe the request belongs to. Following requests must have the same pipeId to be aggregated into the same file!
+                type: string
+            hopsFolder:
+                description: The HopsFolder to upload the aggregated file to
+                type: string
+            payload:
+                description: The actual data to be imported
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    text:
+                      type: string
+                    tweet_id:
+                      type: string
+                    is_retweet:
+                      type: boolean
+                    account:
+                      type: string
+                    account_location:
+                      type: string
+                    account_friends:
+                      type: integer
+                      format: int32
+                    account_followers:
+                      type: integer
+                      format: int32
+                    text_clean:
+                      type: string
+                    created_date:
+                      type: string
+                      format: 'date-time'
+                    category:
+                      type: string
+                    keywords_text:
+                      type: array
+                      items:
+                        type: string
+                    text_location:
+                      type: string
+                    text_datetime:
+                      type: string
+                      format: 'date-time'
+                    location_lat:
+                      type: number
+                    location_lon:
+                      type: number
+                    has_location:
+                      type: boolean
+                    has_datetime:
+                      type: boolean
+                    has_numbers:
+                      type: boolean
+                    num_mentions:
+                      type: integer
+                      format: int32
+                    num_words:
+                      type: integer
+                      format: int32
+                    score:
+                      type: number
+                    retrieved_date:
+                      type: string
+                      format: 'date-time'
+
   examples:
     owmImportExample:
       summary: A request to import OWM data every 10 minutes for 3 hours
@@ -126,6 +272,57 @@ components:
                "durationInHours" : 3,
                "frequencyInMinutes" : 10
              }
+
+    ckanImportExample:
+      summary: A request to import Ckan data every 10 minutes for 3 hours
+      value: {
+                "pipeId" : "samplePipe",
+                "hopsFolder" : "upload/myFolder",
+                "url" : "https://my-ckan-source.com/api",
+                "durationInHours" : 3,
+                "frequencyInMinutes" : 10
+              }
+
     csvUploadExample:
       summary: A request to upload CSV data
       value: curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"splitByColumn":2, "renameHeaders":[{"old":"trip_id","new":"tripId"}], "mergeColumns":[[2, 3]], "convertTimeStamps":[5]}' -F upload=@/path/to/file.csv
+
+    customImportExample:
+          summary: A request to import custom data
+          value: {
+                   "pipeId" : "samplePipe",
+                   "hopsFolder" : "upload/myFolder",
+                   "payload" : [
+                      {
+                        "id" : "5a37ff2c751f2420c497e988",
+                        "text" : "New York explosion - as it happened: Donald Trump responds to attempted terror attack | The Independent -… https://t.co/uEPASGEuML",
+                        "tweet_id" : "942813559473561600",
+                        "is_retweet" : false,
+                        "account" : "CTOAssoc",
+                        "account_location" : "Canada",
+                        "account_friends" : 1874,
+                        "account_followers" : 474,
+                        "text_clean" : "new york explosion happened donald trump responds attempted terror attack independent",
+                        "created_date" : "2017-12-18T17:47:23.000Z",
+                        "category" : "explosion",
+                        "keywords_text" : [
+                            "explosion",
+                            "shooting",
+                            "terrorist",
+                            "bomb threat",
+                            "hijack"
+                        ],
+                        "text_location" : "New York,",
+                        "text_datetime" : null,
+                        "location_lat" : 40.7127753,
+                        "location_lon" : -74.0059728,
+                        "has_location" : true,
+                        "has_datetime" : false,
+                        "has_numbers" : false,
+                        "num_mentions" : 0,
+                        "num_words" : 12,
+                        "score" : 1.0,
+                        "retrieved_date" : "2017-12-18T19:47:24.751Z"
+                      }
+                   ]
+                 }

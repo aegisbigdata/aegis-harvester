@@ -55,7 +55,7 @@ components:
         dataType:
             description: Enum indication whether the payload consists of OWM or CSV data
             type: string
-            enum: [OWM, CSV]
+            enum: [OWM, CSV, CUSTOM]
         payload:
             description: Either JSON containing OWM weather data or JSON containing 'csv' data and a 'mapping'
             type: string
@@ -69,6 +69,14 @@ components:
                "payload" : "{\"coord\":{\"lon\":14.44, ... }"
              }
     csvTransformationExample:
+      summary: A request to transform CSV data
+      value: {
+               "pipeId" : "samplePipe",
+               "hopsFolder" : "upload/myFolder",
+               "dataType" : "CSV",
+               "payload" : "{\"csv\" : \"data_1,data_2, ... \", \"mapping\" : \" see README for explanation of available mappings \"}"
+             }
+    customTransformationExample:
       summary: A request to transform CSV data
       value: {
                "pipeId" : "samplePipe",

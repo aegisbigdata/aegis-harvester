@@ -84,6 +84,7 @@ public class MainVerticle extends AbstractVerticle {
 
         List<Future> deploymentFutures = new ArrayList<>();
         deploymentFutures.add(startVerticle(options, OwmImporterVerticle.class.getName()));
+        deploymentFutures.add(startVerticle(options, CkanImporterVerticle.class.getName()));
         deploymentFutures.add(startVerticle(options, DataSenderVerticle.class.getName()));
 
         return CompositeFuture.join(deploymentFutures);
@@ -97,6 +98,7 @@ public class MainVerticle extends AbstractVerticle {
         router.route().handler(BodyHandler.create().setUploadsDirectory(config.getString("tmpDir")));
         router.get("/running").handler(this::runningJobshandler);
         router.post("/owm").handler(this::fetchDataFromOwm);
+        router.post("/ckan").handler(this::fetchDataFromCkan);
         router.post("/upload").handler(this::handleFileUpload);
         router.post("/custom").handler(this::handleCustomData);
 
@@ -169,6 +171,43 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
+    private void fetchDataFromCkan(RoutingContext context) {
+
+        List<String> runningJobs = new ArrayList<>();
+        getRunningJobsFromFile(jobFile).setHandler(handler -> {
+            if (handler.succeeded()) {
+                runningJobs.addAll(handler.result());
+            } else {
+                LOG.warn("Could not retrieve running jobs, collisions may occur");
+            }
+
+            JsonObject response = new JsonObject();
+            context.response().putHeader("Content-Type", "application/json");
+
+            try {
+                CkanFetchRequest request = Json.decodeValue(context.getBodyAsString(), CkanFetchRequest.class);
+
+                if (request.getPipeId() == null || runningJobs.contains(request.getPipeId())) {
+                    response.put("message", "Please provide a unique pipe ID (pipeId)");
+                    context.response().setStatusCode(400);
+                } else if (request.getDurationInHours() != 0 && request.getDurationInHours() * 60 < request.getFrequencyInMinutes()) {
+                    response.put("message", "Frequency lower than total duration");
+                    context.response().setStatusCode(400);
+                } else {
+                    vertx.eventBus().send(DataType.CKAN.getEventBusAddress(), context.getBodyAsString());
+
+                    writeJobToFile(jobFile, request.getPipeId());
+                    context.response().setStatusCode(202);
+                }
+            } catch (DecodeException e) {
+                response.put("message", "Invalid JSON provided");
+                context.response().setStatusCode(400);
+            }
+
+            context.response().end(response.encode());
+        });
+    }
+
     private void handleFileUpload(RoutingContext context) {
         List<String> runningJobs = new ArrayList<>();
         getRunningJobsFromFile(jobFile).setHandler(handler -> {
@@ -214,34 +253,34 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void handleCustomData(RoutingContext context) {
-            JsonObject response = new JsonObject();
-            context.response().putHeader("Content-Type", "application/json");
+        JsonObject response = new JsonObject();
+        context.response().putHeader("Content-Type", "application/json");
 
-            try {
-                JsonObject request = new JsonObject(context.getBody().toString());
-                String pipeId = request.getString("pipeId");
-                String hopsFolder = request.getString("hopsFolder");
-                JsonArray payload = request.getJsonArray("payload");
+        try {
+            JsonObject request = new JsonObject(context.getBody().toString());
+            String pipeId = request.getString("pipeId");
+            String hopsFolder = request.getString("hopsFolder");
+            JsonArray payload = request.getJsonArray("payload");
 
-                if (pipeId == null) {
-                    response.put("message", "Please provide a pipe ID (pipeId)");
-                    context.response().setStatusCode(400);
-                } else {
-                    payload.forEach(obj -> {
-                        DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, DataType.CUSTOM, obj.toString());
-                        LOG.debug("Sending {}", sendRequest.toString());
-
-                        vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
-                    });
-
-                    context.response().setStatusCode(202);
-                }
-            } catch (DecodeException e) {
-                response.put("message", "Invalid JSON provided");
+            if (pipeId == null) {
+                response.put("message", "Please provide a pipe ID (pipeId)");
                 context.response().setStatusCode(400);
-            }
+            } else {
+                payload.forEach(obj -> {
+                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, DataType.CUSTOM, obj.toString());
+                    LOG.debug("Sending {}", sendRequest.toString());
 
-            context.response().end(response.encode());
+                    vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
+                });
+
+                context.response().setStatusCode(202);
+            }
+        } catch (DecodeException e) {
+            response.put("message", "Invalid JSON provided");
+            context.response().setStatusCode(400);
+        }
+
+        context.response().end(response.encode());
     }
 
     private void handleCsvFiles(String pipeId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript) {

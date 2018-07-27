@@ -2,7 +2,7 @@ package model;
 
 public enum DataType {
 
-    OWM("message.owm"), CSV("message.csv"), CUSTOM("message.custom");
+    OWM("message.owm"), CKAN("message.ckan"), CSV("message.csv"), CUSTOM("message.custom");
 
     private final String eventBusAddress;
 

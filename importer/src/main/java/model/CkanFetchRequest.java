@@ -3,7 +3,8 @@ package model;
 public class CkanFetchRequest {
 
     private String pipeId;
-    private String hopsFolder;
+    private Integer hopsProjectId;
+    private String hopsDataset;
     private String url;
 
     private Integer durationInHours;
@@ -17,12 +18,20 @@ public class CkanFetchRequest {
         this.pipeId = pipeId;
     }
 
-    public String getHopsFolder() {
-        return hopsFolder;
+    public Integer getHopsProjectId() {
+        return hopsProjectId;
     }
 
-    public void setHopsFolder(String hopsFolder) {
-        this.hopsFolder = hopsFolder;
+    public void setHopsProjectId(Integer hopsProjectId) {
+        this.hopsProjectId = hopsProjectId;
+    }
+
+    public String getHopsDataset() {
+        return hopsDataset;
+    }
+
+    public void setHopsDataset(String hopsDataset) {
+        this.hopsDataset = hopsDataset;
     }
 
     public String getUrl() {
@@ -53,7 +62,8 @@ public class CkanFetchRequest {
     public String toString() {
         return "CkanFetchRequest{" +
                 "pipeId='" + pipeId + '\'' +
-                ", hopsFolder='" + hopsFolder + '\'' +
+                ", hopsProjectId=" + hopsProjectId +
+                ", hopsDataset='" + hopsDataset + '\'' +
                 ", url='" + url + '\'' +
                 ", durationInHours=" + durationInHours +
                 ", frequencyInMinutes=" + frequencyInMinutes +

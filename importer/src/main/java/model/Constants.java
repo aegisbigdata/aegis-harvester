@@ -10,4 +10,8 @@ public final class Constants {
     public static final String OWM_TYPE_LOCATION = "location";
 
     public static final String CUSTOM_TYPE_CSV = "csv";
+
+    public static final String KEY_PIPE_ID = "pipeId";
+    public static final String KEY_HOPS_PROJECT_ID = "hopsProjectId";
+    public static final String KEY_HOPS_DATASET = "hopsDataset";
 }

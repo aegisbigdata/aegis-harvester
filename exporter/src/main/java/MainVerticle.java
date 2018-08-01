@@ -74,14 +74,14 @@ public class MainVerticle extends AbstractVerticle {
     private void handleExport(RoutingContext context, JsonObject config) {
         LOG.debug("Received request with body {}", context.getBodyAsString());
 
-        String hopsFolder = context.getBodyAsJson().getString("hopsFolder");
+        Integer hopsProjectId = context.getBodyAsJson().getInteger("hopsProjectId");
+        String hopsDataset = "upload/" + context.getBodyAsJson().getString("hopsDataset");
         String filePath = context.getBodyAsJson().getString("payload");
         context.response()
                 .setStatusCode(202) // accepted
                 .putHeader("Content-Type", "application/json")
                 .end();
 
-        String projectId = config.getJsonObject("aegis").getString("projectId");
         String url = config.getJsonObject("aegis").getString("url");  //test server
         String email = config.getJsonObject("aegis").getString("user");
         String password = config.getJsonObject("aegis").getString("password");
@@ -90,7 +90,7 @@ public class MainVerticle extends AbstractVerticle {
             if (Files.exists(Paths.get(filePath))) {
 
                 HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email, password, url);
-                hopsworksAdapter.actionUploadFile(projectId, hopsFolder, filePath);
+                hopsworksAdapter.actionUploadFile(hopsProjectId.toString(), hopsDataset, filePath);
 
                 LOG.debug("Uploaded file [{}] to hopsworks", filePath);
 

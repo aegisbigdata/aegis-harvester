@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CustomTransformationVerticle extends AbstractVerticle {
+public class EventTransformationVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainVerticle.class);
 
@@ -24,16 +24,16 @@ public class CustomTransformationVerticle extends AbstractVerticle {
 
     @Override
     public void start(Future<Void> future) {
-        vertx.eventBus().consumer(DataType.CUSTOM.getEventBusAddress(), this::handleCustomTransformation);
+        vertx.eventBus().consumer(DataType.EVENT.getEventBusAddress(), this::handleCustomTransformation);
 
         future.complete();
     }
 
     private void handleCustomTransformation(Message<String> message) {
-        TransformationRequest transformationRequest = Json.decodeValue(message.body(), TransformationRequest.class);
-        LOG.debug("Transforming {}", transformationRequest);
+        TransformationRequest request = Json.decodeValue(message.body(), TransformationRequest.class);
+        LOG.debug("Transforming {}", request);
 
-        JsonObject payload = new JsonObject(transformationRequest.getPayload());
+        JsonObject payload = new JsonObject(request.getPayload());
         List<String> csvValues = new ArrayList<>();
 
         String id = payload.getString("id");
@@ -114,7 +114,7 @@ public class CustomTransformationVerticle extends AbstractVerticle {
         String csv = String.join(",", csvValues) + "\n";
 
         DataSendRequest sendRequest =
-                new DataSendRequest(transformationRequest.getPipeId(), transformationRequest.getHopsFolder(), null, CSV_HEADERS, csv, true);
+                new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), null, CSV_HEADERS, csv, true);
 
         vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
     }

@@ -3,8 +3,9 @@ package model;
 public class TransformationRequest {
 
     private String pipeId;
+    private Integer hopsProjectId;
+    private String hopsDataset;
     private DataType dataType;
-    private String hopsFolder;
     private String payload;
 
     public String getPipeId() {
@@ -15,6 +16,22 @@ public class TransformationRequest {
         this.pipeId = pipeId;
     }
 
+    public Integer getHopsProjectId() {
+        return hopsProjectId;
+    }
+
+    public void setHopsProjectId(Integer hopsProjectId) {
+        this.hopsProjectId = hopsProjectId;
+    }
+
+    public String getHopsDataset() {
+        return hopsDataset;
+    }
+
+    public void setHopsDataset(String hopsDataset) {
+        this.hopsDataset = hopsDataset;
+    }
+
     public DataType getDataType() {
         return dataType;
     }
@@ -23,19 +40,22 @@ public class TransformationRequest {
         this.dataType = dataType;
     }
 
-    public String getHopsFolder() {
-        return hopsFolder;
-    }
-
-    public void setHopsFolder(String hopsFolder) {
-        this.hopsFolder = hopsFolder;
-    }
-
     public String getPayload() {
         return payload;
     }
 
     public void setPayload(String payload) {
         this.payload = payload;
+    }
+
+    @Override
+    public String toString() {
+        return "TransformationRequest{" +
+                "pipeId='" + pipeId + '\'' +
+                ", hopsProjectId=" + hopsProjectId +
+                ", hopsDataset='" + hopsDataset + '\'' +
+                ", dataType=" + dataType +
+                ", payload='" + payload + '\'' +
+                '}';
     }
 }

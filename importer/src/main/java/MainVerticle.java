@@ -100,7 +100,7 @@ public class MainVerticle extends AbstractVerticle {
         router.post("/owm").handler(this::fetchDataFromOwm);
         router.post("/ckan").handler(this::fetchDataFromCkan);
         router.post("/upload").handler(this::handleFileUpload);
-        router.post("/custom").handler(this::handleCustomData);
+        router.post("/event").handler(this::handleCustomData);
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -222,15 +222,16 @@ public class MainVerticle extends AbstractVerticle {
 
             try {
                 MultiMap attributes = context.request().formAttributes();
-                String pipeId = attributes.get("pipeId");
-                String hopsFolder = attributes.get("hopsFolder");
+                String pipeId = attributes.get(KEY_PIPE_ID);
+                Integer hopsProjectId = Integer.valueOf(attributes.get(KEY_HOPS_PROJECT_ID));
+                String hopsDataset = attributes.get(KEY_HOPS_DATASET);
                 JsonObject csvMapping = new JsonObject(attributes.get("mapping"));
 
                 if (pipeId != null && !runningJobs.contains(pipeId)) {
-                    if (hopsFolder != null && !hopsFolder.isEmpty()) {
+                    if (hopsDataset != null && !hopsDataset.isEmpty()) {
 
                         writeJobToFile(jobFile, pipeId);
-                        handleCsvFiles(pipeId, hopsFolder, context.fileUploads(), csvMapping);
+                        handleCsvFiles(pipeId, hopsProjectId, hopsDataset, context.fileUploads(), csvMapping);
                         removeJobFromFile(jobFile, pipeId);
 
                         context.response().setStatusCode(202);
@@ -242,8 +243,10 @@ public class MainVerticle extends AbstractVerticle {
                     response.put("message", "Please provide a unique pipe ID (pipeId)");
                     context.response().setStatusCode(400);
                 }
+            } catch (NumberFormatException e) {
+                response.put("message", "HopsProjectID provided is not an Integer");
+                context.response().setStatusCode(400);
             } catch (DecodeException e) {
-                LOG.debug("Invalid mapping script provided");
                 response.put("message", "Invalid mapping script provided");
                 context.response().setStatusCode(400);
             }
@@ -258,8 +261,9 @@ public class MainVerticle extends AbstractVerticle {
 
         try {
             JsonObject request = new JsonObject(context.getBody().toString());
-            String pipeId = request.getString("pipeId");
-            String hopsFolder = request.getString("hopsFolder");
+            String pipeId = request.getString(KEY_PIPE_ID);
+            Integer hopsProjectId = request.getInteger(KEY_HOPS_PROJECT_ID);
+            String hopsDataset = request.getString(KEY_HOPS_DATASET);
             JsonArray payload = request.getJsonArray("payload");
 
             if (pipeId == null) {
@@ -267,7 +271,8 @@ public class MainVerticle extends AbstractVerticle {
                 context.response().setStatusCode(400);
             } else {
                 payload.forEach(obj -> {
-                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, DataType.CUSTOM, obj.toString());
+                    DataSendRequest sendRequest
+                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, obj.toString());
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
@@ -283,7 +288,7 @@ public class MainVerticle extends AbstractVerticle {
         context.response().end(response.encode());
     }
 
-    private void handleCsvFiles(String pipeId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript) {
+    private void handleCsvFiles(String pipeId, Integer hopsProjectId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript) {
 
         for (FileUpload file : files) {
             LOG.debug("Uploading file [{}]", file.uploadedFileName());
@@ -295,7 +300,8 @@ public class MainVerticle extends AbstractVerticle {
                             .put("mapping", mappingScript)
                             .put("csv", csv);
 
-                    DataSendRequest sendRequest = new DataSendRequest(pipeId, hopsFolder, DataType.CSV, payload.toString());
+                    DataSendRequest sendRequest
+                            = new DataSendRequest(pipeId, hopsProjectId, hopsFolder, DataType.CSV, payload.toString());
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));

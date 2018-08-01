@@ -3,7 +3,8 @@ package model;
 public class DataSendRequest {
 
     private String pipeId;
-    private String hopsFolder;
+    private Integer hopsProjectId;
+    private String hopsDataset;
     private String baseFileName;
     private String csvHeaders;
     private String csvPayload;
@@ -13,9 +14,10 @@ public class DataSendRequest {
 
     public DataSendRequest() {}
 
-    public DataSendRequest(String pipeId, String hopsFolder, String baseFileName, String csvHeaders, String csvPayload, Boolean aggregate) {
+    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, String baseFileName, String csvHeaders, String csvPayload, Boolean aggregate) {
         this.pipeId = pipeId;
-        this.hopsFolder = hopsFolder;
+        this.hopsProjectId = hopsProjectId;
+        this.hopsDataset = hopsDataset;
         this.baseFileName = baseFileName;
         this.csvHeaders = csvHeaders;
         this.csvPayload = csvPayload;
@@ -30,12 +32,20 @@ public class DataSendRequest {
         this.pipeId = pipeId;
     }
 
-    public String getHopsFolder() {
-        return hopsFolder;
+    public Integer getHopsProjectId() {
+        return hopsProjectId;
     }
 
-    public void setHopsFolder(String hopsFolder) {
-        this.hopsFolder = hopsFolder;
+    public void setHopsProjectId(Integer hopsProjectId) {
+        this.hopsProjectId = hopsProjectId;
+    }
+
+    public String getHopsDataset() {
+        return hopsDataset;
+    }
+
+    public void setHopsDataset(String hopsDataset) {
+        this.hopsDataset = hopsDataset;
     }
 
     public String getBaseFileName() {
@@ -74,7 +84,8 @@ public class DataSendRequest {
     public String toString() {
         return "DataSendRequest{" +
                 "pipeId='" + pipeId + '\'' +
-                ", hopsFolder='" + hopsFolder + '\'' +
+                ", hopsProjectId=" + hopsProjectId +
+                ", hopsDataset='" + hopsDataset + '\'' +
                 ", baseFileName='" + baseFileName + '\'' +
                 ", csvHeaders='" + csvHeaders + '\'' +
                 ", csvPayload='" + csvPayload + '\'' +

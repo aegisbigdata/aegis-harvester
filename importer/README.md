@@ -41,7 +41,8 @@ containing a JSON body with the data shown in the table below. All values are ma
 |Key|Description|
 |:--- |:---|
 |pipeId| Unique payload identifying the job |
-|hopsFolder| The hopsworks folder the resulting file will be uploaded to |
+|hopsProjectId| The project ID in hopsworks in which the hopsDataset resides |
+|hopsDataset| The dataset in hopsworks to upload the resulting CSV file to |
 |type| Either `bbox` or `location` |
 |payload| Either the bbox coordinates or a location ID |
 |durationInHours| How long the pipeline should run for, in hours. A payload < 1 will make the pipeline run exactly once. |
@@ -60,7 +61,8 @@ containing a JSON body with the data shown in the table below. All values are ma
 |Key|Description|
 |:--- |:---|
 |pipeId| Unique payload identifying the job |
-|hopsFolder| The hopsworks folder the resulting file will be uploaded to |
+|hopsProjectId| The project ID in hopsworks in which the hopsDataset resides |
+|hopsDataset| The dataset in hopsworks to upload the resulting CSV file to |
 |url| The full ckan URL to fetch API data from |
 |durationInHours| How long the pipeline should run for, in hours. A payload < 1 will make the pipeline run exactly once. |
 |frequencyInMinutes| The interval at which data should be fetched, in minutes. A payload < 1 will make the pipeline not run. |
@@ -71,14 +73,15 @@ A frequency higher than the duration (for durations > 0) is not allowed.
 
 In order to push weather data from another source a `POST` request must be sent to
 
-    {url}/custom
+    {url}/upload
 
 containing multipart/form-data with key-payload pairs containing the data shown in the table below. All values are mandatory.
 
 |Key|Description|
 |:--- |:---|
 |pipeId| Unique payload identifying the job |
-|hopsFolder| The hopsworks folder the resulting file will be uploaded to |
+|hopsProjectId| The project ID in hopsworks in which the hopsDataset resides |
+|hopsDataset| The dataset in hopsworks to upload the resulting CSV file to |
 |upload| Path to a local file |
 |mapping| Instructions for transforming csv data. See below for a more thorough explanation |
 
@@ -136,7 +139,24 @@ Numbers indicate the indices of the columns to be transformed.
 
 An example using curl is shown below:
 
-    curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"splitByColumn":2, "renameHeaders":[{"old":"trip_id","new":"tripId"}], "mergeColumns":[[2, 3]], "convertTimeStamps":[5]}' -F upload=@/path/to/file.csv
+    curl -X POST {url}/upload -F pipeId=csvPipe -F hopsProjectId=123 -F hopsDataset=myFolder -F mapping='{"splitByColumn":2, "renameHeaders":[{"old":"trip_id","new":"tripId"}], "mergeColumns":[[2, 3]], "convertTimeStamps":[5]}' -F upload=@/path/to/file.csv
+
+### Suite5 Events
+
+To trigger the fetching of data a `POST` request must be sent to
+
+    {url}/event
+    
+containing a JSON body with the data shown in the table below. All values are mandatory.
+
+|Key|Description|
+|:--- |:---|
+|pipeId| Unique payload identifying the job |
+|hopsProjectId| The project ID in hopsworks in which the hopsDataset resides |
+|hopsDataset| The dataset in hopsworks to upload the resulting CSV file to |
+|payload| JSON as specified in the `openapi.yaml` file |
+
+A frequency higher than the duration (for durations > 0) is not allowed.
 
 ### Status
 

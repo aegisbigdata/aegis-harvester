@@ -3,7 +3,8 @@ package model;
 public class OwmFetchRequest {
 
     private String pipeId;
-    private String hopsFolder;
+    private Integer hopsProjectId;
+    private String hopsDataset;
     private String type;
     private String value;
 
@@ -18,12 +19,20 @@ public class OwmFetchRequest {
         this.pipeId = pipeId;
     }
 
-    public String getHopsFolder() {
-        return hopsFolder;
+    public Integer getHopsProjectId() {
+        return hopsProjectId;
     }
 
-    public void setHopsFolder(String hopsFolder) {
-        this.hopsFolder = hopsFolder;
+    public void setHopsProjectId(Integer hopsProjectId) {
+        this.hopsProjectId = hopsProjectId;
+    }
+
+    public String getHopsDataset() {
+        return hopsDataset;
+    }
+
+    public void setHopsDataset(String hopsDataset) {
+        this.hopsDataset = hopsDataset;
     }
 
     public String getType() {
@@ -62,7 +71,8 @@ public class OwmFetchRequest {
     public String toString() {
         return "OwmFetchRequest{" +
                 "pipeId='" + pipeId + '\'' +
-                ", hopsFolder='" + hopsFolder + '\'' +
+                ", hopsProjectId=" + hopsProjectId +
+                ", hopsDataset='" + hopsDataset + '\'' +
                 ", type='" + type + '\'' +
                 ", value='" + value + '\'' +
                 ", durationInHours=" + durationInHours +

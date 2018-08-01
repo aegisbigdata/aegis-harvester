@@ -66,7 +66,7 @@ public class MainVerticle extends AbstractVerticle {
         List<Future> deploymentFutures = new ArrayList<>();
         deploymentFutures.add(startVerticle(options, OwmTransformationVerticle.class.getName()));
         deploymentFutures.add(startVerticle(options, CsvTransformationVerticle.class.getName()));
-        deploymentFutures.add(startVerticle(options, CustomTransformationVerticle.class.getName()));
+        deploymentFutures.add(startVerticle(options, EventTransformationVerticle.class.getName()));
         deploymentFutures.add(startVerticle(options, DataSenderVerticle.class.getName()));
 
         return CompositeFuture.join(deploymentFutures);
@@ -123,8 +123,8 @@ public class MainVerticle extends AbstractVerticle {
                     vertx.eventBus().send(DataType.CSV.getEventBusAddress(), context.getBodyAsString());
                     response.setStatusCode(202);
                     break;
-                case CUSTOM:
-                    vertx.eventBus().send(DataType.CUSTOM.getEventBusAddress(), context.getBodyAsString());
+                case EVENT:
+                    vertx.eventBus().send(DataType.EVENT.getEventBusAddress(), context.getBodyAsString());
                     response.setStatusCode(202);
                     break;
                 default:

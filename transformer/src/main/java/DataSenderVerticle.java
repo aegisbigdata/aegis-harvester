@@ -32,7 +32,8 @@ public class DataSenderVerticle extends AbstractVerticle {
 
         JsonObject json = new JsonObject();
         json.put("pipeId", request.getPipeId());
-        json.put("hopsFolder", request.getHopsFolder());
+        json.put("hopsProjectId", request.getHopsProjectId());
+        json.put("hopsDataset", request.getHopsDataset());
         json.put("baseFileName", request.getBaseFileName() != null
                 ? request.getBaseFileName().replaceAll("[^a-zA-Z0-9_]+","") // remove special chars for use as file name
                 : "");

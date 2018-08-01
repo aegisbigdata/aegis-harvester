@@ -77,21 +77,21 @@ paths:
         '400':
           description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
 
-  /custom:
+  /event:
     post:
-      description: Push data in one of the supported formats (currently only JSON)
-      summary: Import custom data
-      operationId: customImport
+      description: Push JSON data
+      summary: Import JSON event data
+      operationId: eventImport
       requestBody:
-        description: Custom data
+        description: JSON event data in the format used by suite5
         required: true
         content:
           'application/json':
             schema:
-              $ref: '#/components/schemas/CustomImportRequest'
+              $ref: '#/components/schemas/EventImportRequest'
             examples:
               customImportExample:
-                $ref: '#/components/examples/customImportExample'
+                $ref: '#/components/examples/eventImportExample'
 
       responses:
         '202':
@@ -117,7 +117,8 @@ components:
       type: object
       required:
         - pipeId
-        - hopsFolder
+        - hopsProjectId
+        - hopsDataset
         - type
         - value
         - durationInHours
@@ -126,8 +127,11 @@ components:
         pipeId:
             description: A unique ID to identify the pipe the request belongs to
             type: string
-        hopsFolder:
-            description: The HopsFolder to upload the file to
+        hopsProjectId:
+            description: The project ID in hopsworks in which the hopsDataset resides
+            type: string
+        hopsDataset:
+            description: The dataset in hopsworks to upload the resulting CSV file to
             type: string
         type:
             description: Enum indication which type of OWM API shall be queried
@@ -148,7 +152,8 @@ components:
       type: object
       required:
         - pipeId
-        - hopsFolder
+        - hopsProjectId
+        - hopsDataset
         - url
         - durationInHours
         - frequencyInMinutes
@@ -156,8 +161,11 @@ components:
         pipeId:
             description: A unique ID to identify the pipe the request belongs to
             type: string
-        hopsFolder:
-            description: The HopsFolder to upload the file to
+        hopsProjectId:
+            description: The project ID in hopsworks in which the hopsDataset resides
+            type: string
+        hopsDataset:
+            description: The dataset in hopsworks to upload the resulting CSV file to
             type: string
         url:
             describtion: The full Ckan API URL
@@ -176,8 +184,11 @@ components:
           name: pipeId
           description: A unique ID to identify the pipe the request belongs to
         - in: formData
-          name: hopsFolder
-          description: The HopsFolder to upload the file to
+          name: hopsProjectId
+          description: The project ID in hopsworks in which the hopsDataset resides
+        - in: formData
+          name: hopsDataset
+          description: The dataset in hopsworks to upload the resulting CSV file to
         - in: formData
           name: mapping
           description: A mapping for transforming CSV. The syntax may be found in the transformer's README file
@@ -185,88 +196,93 @@ components:
           name: upload
           description: Path to the CSV file to be uploaded
 
-    CustomImportRequest:
-          description: All data required for importing custom data
-          type: object
-          required:
-            - pipeId
-            - hopsFolder
-            - payload
-          properties:
-            pipeId:
-                description: A unique ID to identify the pipe the request belongs to. Following requests must have the same pipeId to be aggregated into the same file!
-                type: string
-            hopsFolder:
-                description: The HopsFolder to upload the aggregated file to
-                type: string
-            payload:
-                description: The actual data to be imported
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    text:
-                      type: string
-                    tweet_id:
-                      type: string
-                    is_retweet:
-                      type: boolean
-                    account:
-                      type: string
-                    account_location:
-                      type: string
-                    account_friends:
-                      type: integer
-                      format: int32
-                    account_followers:
-                      type: integer
-                      format: int32
-                    text_clean:
-                      type: string
-                    created_date:
-                      type: string
-                      format: 'date-time'
-                    category:
-                      type: string
-                    keywords_text:
-                      type: array
-                      items:
-                        type: string
-                    text_location:
-                      type: string
-                    text_datetime:
-                      type: string
-                      format: 'date-time'
-                    location_lat:
-                      type: number
-                    location_lon:
-                      type: number
-                    has_location:
-                      type: boolean
-                    has_datetime:
-                      type: boolean
-                    has_numbers:
-                      type: boolean
-                    num_mentions:
-                      type: integer
-                      format: int32
-                    num_words:
-                      type: integer
-                      format: int32
-                    score:
-                      type: number
-                    retrieved_date:
-                      type: string
-                      format: 'date-time'
+    EventImportRequest:
+      description: All data required for importing event data as JSON
+      type: object
+      required:
+        - pipeId
+        - hopsProjectId
+        - hopsDataset
+        - payload
+      properties:
+        pipeId:
+            description: A unique ID to identify the pipe the request belongs to. Following requests must have the same pipeId to be aggregated into the same file!
+            type: string
+        hopsProjectId:
+            description: The project ID in hopsworks in which the hopsDataset resides
+            type: string
+        hopsDataset:
+            description: The dataset in hopsworks to upload the file to
+            type: string
+        payload:
+            description: The actual data to be imported
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                text:
+                  type: string
+                tweet_id:
+                  type: string
+                is_retweet:
+                  type: boolean
+                account:
+                  type: string
+                account_location:
+                  type: string
+                account_friends:
+                  type: integer
+                  format: int32
+                account_followers:
+                  type: integer
+                  format: int32
+                text_clean:
+                  type: string
+                created_date:
+                  type: string
+                  format: 'date-time'
+                category:
+                  type: string
+                keywords_text:
+                  type: array
+                  items:
+                    type: string
+                text_location:
+                  type: string
+                text_datetime:
+                  type: string
+                  format: 'date-time'
+                location_lat:
+                  type: number
+                location_lon:
+                  type: number
+                has_location:
+                  type: boolean
+                has_datetime:
+                  type: boolean
+                has_numbers:
+                  type: boolean
+                num_mentions:
+                  type: integer
+                  format: int32
+                num_words:
+                  type: integer
+                  format: int32
+                score:
+                  type: number
+                retrieved_date:
+                  type: string
+                  format: 'date-time'
 
   examples:
     owmImportExample:
       summary: A request to import OWM data every 10 minutes for 3 hours
       value: {
                "pipeId" : "samplePipe",
-               "hopsFolder" : "upload/myFolder",
+               "hopsProjectId" : 123,
+               "hopsDataset" : "myDataset",
                "type" : "location",
                "value" : "123456",
                "durationInHours" : 3,
@@ -276,53 +292,55 @@ components:
     ckanImportExample:
       summary: A request to import Ckan data every 10 minutes for 3 hours
       value: {
-                "pipeId" : "samplePipe",
-                "hopsFolder" : "upload/myFolder",
-                "url" : "https://my-ckan-source.com/api",
-                "durationInHours" : 3,
-                "frequencyInMinutes" : 10
+               "pipeId" : "samplePipe",
+               "hopsProjectId" : 123,
+               "hopsDataset" : "myDataset",
+               "url" : "https://my-ckan-source.com/api",
+               "durationInHours" : 3,
+               "frequencyInMinutes" : 10
               }
 
     csvUploadExample:
       summary: A request to upload CSV data
       value: curl -X POST {url}/custom -F pipeId=csvPipe -F hopsFolder=myFolder -F mapping='{"splitByColumn":2, "renameHeaders":[{"old":"trip_id","new":"tripId"}], "mergeColumns":[[2, 3]], "convertTimeStamps":[5]}' -F upload=@/path/to/file.csv
 
-    customImportExample:
-          summary: A request to import custom data
-          value: {
-                   "pipeId" : "samplePipe",
-                   "hopsFolder" : "upload/myFolder",
-                   "payload" : [
-                      {
-                        "id" : "5a37ff2c751f2420c497e988",
-                        "text" : "New York explosion - as it happened: Donald Trump responds to attempted terror attack | The Independent -… https://t.co/uEPASGEuML",
-                        "tweet_id" : "942813559473561600",
-                        "is_retweet" : false,
-                        "account" : "CTOAssoc",
-                        "account_location" : "Canada",
-                        "account_friends" : 1874,
-                        "account_followers" : 474,
-                        "text_clean" : "new york explosion happened donald trump responds attempted terror attack independent",
-                        "created_date" : "2017-12-18T17:47:23.000Z",
-                        "category" : "explosion",
-                        "keywords_text" : [
-                            "explosion",
-                            "shooting",
-                            "terrorist",
-                            "bomb threat",
-                            "hijack"
-                        ],
-                        "text_location" : "New York,",
-                        "text_datetime" : null,
-                        "location_lat" : 40.7127753,
-                        "location_lon" : -74.0059728,
-                        "has_location" : true,
-                        "has_datetime" : false,
-                        "has_numbers" : false,
-                        "num_mentions" : 0,
-                        "num_words" : 12,
-                        "score" : 1.0,
-                        "retrieved_date" : "2017-12-18T19:47:24.751Z"
-                      }
-                   ]
-                 }
+    eventImportExample:
+      summary: A request to import event data as JSON
+      value: {
+               "pipeId" : "samplePipe",
+               "hopsProjectId" : 123,
+               "hopsDataset" : "myDataset",
+               "payload" : [
+                  {
+                    "id" : "5a37ff2c751f2420c497e988",
+                    "text" : "New York explosion - as it happened: Donald Trump responds to attempted terror attack | The Independent -… https://t.co/uEPASGEuML",
+                    "tweet_id" : "942813559473561600",
+                    "is_retweet" : false,
+                    "account" : "CTOAssoc",
+                    "account_location" : "Canada",
+                    "account_friends" : 1874,
+                    "account_followers" : 474,
+                    "text_clean" : "new york explosion happened donald trump responds attempted terror attack independent",
+                    "created_date" : "2017-12-18T17:47:23.000Z",
+                    "category" : "explosion",
+                    "keywords_text" : [
+                        "explosion",
+                        "shooting",
+                        "terrorist",
+                        "bomb threat",
+                        "hijack"
+                    ],
+                    "text_location" : "New York,",
+                    "text_datetime" : null,
+                    "location_lat" : 40.7127753,
+                    "location_lon" : -74.0059728,
+                    "has_location" : true,
+                    "has_datetime" : false,
+                    "has_numbers" : false,
+                    "num_mentions" : 0,
+                    "num_words" : 12,
+                    "score" : 1.0,
+                    "retrieved_date" : "2017-12-18T19:47:24.751Z"
+                  }
+               ]
+             }

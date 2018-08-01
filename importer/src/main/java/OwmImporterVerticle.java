@@ -91,12 +91,12 @@ public class OwmImporterVerticle extends AbstractVerticle {
                     if (OWM_TYPE_BBOX.equals(request.getType())) {
                         for (Object obj : body.getJsonArray("list")) {
                             DataSendRequest dataSendRequest =
-                                    new DataSendRequest(request.getPipeId(), request.getHopsFolder(), DataType.OWM, (String) obj);
+                                    new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, (String) obj);
                             vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                         }
                     } else {
                         DataSendRequest dataSendRequest =
-                                new DataSendRequest(request.getPipeId(), request.getHopsFolder(), DataType.OWM, body.toString());
+                                new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, body.toString());
                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                     }
                 }

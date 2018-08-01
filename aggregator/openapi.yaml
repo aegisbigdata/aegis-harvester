@@ -40,7 +40,8 @@ components:
       type: object
       required:
         - pipeId
-        - hopsFolder
+        - hopsProjectId
+        - hopsDataset
         - baseFileName
         - csvHeaders
         - payload
@@ -49,8 +50,11 @@ components:
         pipeId:
             description: A unique ID to identify the pipe the request belongs to
             type: string
-        hopsFolder:
-            description: The HopsFolder to upload the file to
+        hopsProjectId:
+            description: The project ID in hopsworks in which the hopsDataset resides
+            type: string
+        hopsDataset:
+            description: The dataset in hopsworks to upload the resulting CSV file to
             type: string
         baseFileName:
             description: The base filename used for generating a unique file name
@@ -69,7 +73,8 @@ components:
       summary: A request to aggregate CSV data
       value: {
                "pipeId" : "samplePipe",
-               "hopsFolder" : "upload/myFolder",
+               "hopsProjectId" : 123,
+               "hopsDataset" : "myDataset",
                "baseFileName" : "myFile",
                "csvHeaders" : "header_1,header_2,header_3"
                "payload" : "data_1,data_2,data_3",

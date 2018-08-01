@@ -13,8 +13,8 @@ servers:
 paths:
   /transform:
     post:
-      description: Transform OWM JSON data into CSV or transform existing CSV data
-      summary: Either transform JSON data provided by the OpenWeatherMap endpoints 'bbox' or 'locationId' int CSV by hardcoded means or manipulates existing CSV
+      description: Transform various types of data into CSV
+      summary: The resulting CSV is sent line by line to the next service, with the CSV headers included in every request
       operationId: transform
       requestBody:
         description: Transformation details
@@ -28,6 +28,8 @@ paths:
                 $ref: '#/components/examples/owmTransformationExample'
               csvTransformationExample:
                 $ref: '#/components/examples/csvTransformationExample'
+              eventTransformationExample:
+                $ref: '#/components/examples/eventTransformationExample'
 
       responses:
         '202':
@@ -42,20 +44,24 @@ components:
       type: object
       required:
         - pipeId
-        - hopsFolder
+        - hopsProjectId
+        - hopsDataset
         - dataType
         - payload
       properties:
         pipeId:
             description: A unique ID to identify the pipe the request belongs to
             type: string
-        hopsFolder:
-            description: The HopsFolder to upload the file to
+        hopsProjectId:
+            description: The project ID in hopsworks in which the hopsDataset resides
+            type: string
+        hopsDataset:
+            description: The dataset in hopsworks to upload the resulting CSV file to
             type: string
         dataType:
             description: Enum indication whether the payload consists of OWM or CSV data
             type: string
-            enum: [OWM, CSV, CUSTOM]
+            enum: [OWM, CSV, EVENT]
         payload:
             description: Either JSON containing OWM weather data or JSON containing 'csv' data and a 'mapping'
             type: string
@@ -64,7 +70,8 @@ components:
       summary: A request to transform OWM data
       value: {
                "pipeId" : "samplePipe",
-               "hopsFolder" : "upload/myFolder",
+               "hopsProjectId" : 123,
+               "hopsDataset" : "myDataset",
                "dataType" : "OWM",
                "payload" : "{\"coord\":{\"lon\":14.44, ... }"
              }
@@ -72,15 +79,17 @@ components:
       summary: A request to transform CSV data
       value: {
                "pipeId" : "samplePipe",
-               "hopsFolder" : "upload/myFolder",
+               "hopsProjectId" : 123,
+               "hopsDataset" : "myDataset",
                "dataType" : "CSV",
                "payload" : "{\"csv\" : \"data_1,data_2, ... \", \"mapping\" : \" see README for explanation of available mappings \"}"
              }
-    customTransformationExample:
+    eventTransformationExample:
       summary: A request to transform CSV data
       value: {
                "pipeId" : "samplePipe",
-               "hopsFolder" : "upload/myFolder",
-               "dataType" : "CSV",
-               "payload" : "{\"csv\" : \"data_1,data_2, ... \", \"mapping\" : \" see README for explanation of available mappings \"}"
+               "hopsProjectId" : 123,
+               "hopsDataset" : "myDataset",
+               "dataType" : "EVENT",
+               "payload" : "TODO"
              }

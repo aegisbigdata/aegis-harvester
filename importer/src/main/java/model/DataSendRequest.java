@@ -3,15 +3,17 @@ package model;
 public class DataSendRequest {
 
     private String pipeId;
-    private String hopsFolder;
+    private Integer hopsProjectId;
+    private String hopsDataset;
     private DataType dataType;
     private String payload;
 
     public DataSendRequest() {}
 
-    public DataSendRequest(String pipeId, String hopsFolder, DataType dataType, String payload) {
+    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String payload) {
         this.pipeId = pipeId;
-        this.hopsFolder = hopsFolder;
+        this.hopsProjectId = hopsProjectId;
+        this.hopsDataset = hopsDataset;
         this.dataType = dataType;
         this.payload = payload;
     }
@@ -24,12 +26,20 @@ public class DataSendRequest {
         this.pipeId = pipeId;
     }
 
-    public String getHopsFolder() {
-        return hopsFolder;
+    public Integer getHopsProjectId() {
+        return hopsProjectId;
     }
 
-    public void setHopsFolder(String hopsFolder) {
-        this.hopsFolder = hopsFolder;
+    public void setHopsProjectId(Integer hopsProjectId) {
+        this.hopsProjectId = hopsProjectId;
+    }
+
+    public String getHopsDataset() {
+        return hopsDataset;
+    }
+
+    public void setHopsDataset(String hopsDataset) {
+        this.hopsDataset = hopsDataset;
     }
 
     public DataType getDataType() {
@@ -52,7 +62,8 @@ public class DataSendRequest {
     public String toString() {
         return "DataSendRequest{" +
                 "pipeId='" + pipeId + '\'' +
-                ", hopsFolder='" + hopsFolder + '\'' +
+                ", hopsProjectId=" + hopsProjectId +
+                ", hopsDataset='" + hopsDataset + '\'' +
                 ", dataType=" + dataType +
                 ", payload='" + payload + '\'' +
                 '}';

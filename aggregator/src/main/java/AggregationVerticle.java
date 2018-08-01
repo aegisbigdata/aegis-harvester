@@ -108,7 +108,8 @@ public class AggregationVerticle extends AbstractVerticle {
 
         JsonObject message = new JsonObject();
         message.put("pipeId", request.getPipeId());
-        message.put("hopsFolder", request.getHopsFolder());
+        message.put("hopsProjectId", request.getHopsProjectId());
+        message.put("hopsDataset", request.getHopsDataset());
         message.put("payload", fileNames.get(request.getPipeId()));
 
         Integer port = config().getInteger("target.port");

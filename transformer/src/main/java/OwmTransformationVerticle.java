@@ -30,10 +30,10 @@ public class OwmTransformationVerticle extends AbstractVerticle {
     }
 
     private void handleTransformation(Message<String> message) {
-        TransformationRequest transformationRequest = Json.decodeValue(message.body(), TransformationRequest.class);
-        LOG.debug("Transforming {}", transformationRequest);
+        TransformationRequest request = Json.decodeValue(message.body(), TransformationRequest.class);
+        LOG.debug("Transforming {}", request);
 
-        JsonObject payload = new JsonObject(transformationRequest.getPayload());
+        JsonObject payload = new JsonObject(request.getPayload());
         String location = payload.getString("name");
 
         List<String> csvValues = new ArrayList<>();
@@ -98,7 +98,7 @@ public class OwmTransformationVerticle extends AbstractVerticle {
 
         String csv = String.join(",", csvValues) + "\n";
         DataSendRequest sendRequest =
-                new DataSendRequest(transformationRequest.getPipeId(), transformationRequest.getHopsFolder(), location, CSV_HEADERS, csv, true);
+                new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), location, CSV_HEADERS, csv, true);
 
         vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
     }

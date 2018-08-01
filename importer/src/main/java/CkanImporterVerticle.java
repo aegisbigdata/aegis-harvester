@@ -72,7 +72,7 @@ public class CkanImporterVerticle extends AbstractVerticle {
                     //TODO handle ckan api response
 
                     DataSendRequest dataSendRequest =
-                            new DataSendRequest(request.getPipeId(), request.getHopsFolder(), DataType.OWM, body.toString());
+                            new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, body.toString());
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                 }
             } catch (IOException e) {

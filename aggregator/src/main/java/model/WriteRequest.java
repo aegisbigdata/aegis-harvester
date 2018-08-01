@@ -3,7 +3,8 @@ package model;
 public class WriteRequest {
 
     private String pipeId;
-    private String hopsFolder;
+    private Integer hopsProjectId;
+    private String hopsDataset;
     private String baseFileName;
     private String csvHeaders;
     private String csvData;
@@ -14,9 +15,10 @@ public class WriteRequest {
     public WriteRequest() {
     }
 
-    public WriteRequest(String pipeId, String hopsFolder, String baseFileName, String csvHeaders, String csvData, Boolean aggregate) {
+    public WriteRequest(String pipeId, Integer hopsProjectId, String hopsDataset, String baseFileName, String csvHeaders, String csvData, Boolean aggregate) {
         this.pipeId = pipeId;
-        this.hopsFolder = hopsFolder;
+        this.hopsProjectId = hopsProjectId;
+        this.hopsDataset = hopsDataset;
         this.baseFileName = baseFileName;
         this.csvHeaders = csvHeaders;
         this.csvData = csvData;
@@ -31,12 +33,20 @@ public class WriteRequest {
         this.pipeId = pipeId;
     }
 
-    public String getHopsFolder() {
-        return hopsFolder;
+    public Integer getHopsProjectId() {
+        return hopsProjectId;
     }
 
-    public void setHopsFolder(String hopsFolder) {
-        this.hopsFolder = hopsFolder;
+    public void setHopsProjectId(Integer hopsProjectId) {
+        this.hopsProjectId = hopsProjectId;
+    }
+
+    public String getHopsDataset() {
+        return hopsDataset;
+    }
+
+    public void setHopsDataset(String hopsDataset) {
+        this.hopsDataset = hopsDataset;
     }
 
     public String getBaseFileName() {
@@ -75,8 +85,9 @@ public class WriteRequest {
     public String toString() {
         return "WriteRequest{" +
                 "pipeId='" + pipeId + '\'' +
-                ", hopsFolder='" + hopsFolder + '\'' +
-                ", location='" + baseFileName + '\'' +
+                ", hopsDataset='" + hopsDataset + '\'' +
+                ", hopsProjectId=" + hopsProjectId +
+                ", baseFileName='" + baseFileName + '\'' +
                 ", csvHeaders='" + csvHeaders + '\'' +
                 ", csvData='" + csvData + '\'' +
                 ", aggregate=" + aggregate +

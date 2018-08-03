@@ -2,9 +2,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
-import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import model.*;
 import org.apache.commons.io.FileUtils;
@@ -102,11 +100,49 @@ public class CkanImporterVerticle extends AbstractVerticle {
             } else {
                 LOG.error("CKAN import failed: {}", ckanHandler.cause());
             }
+
+            removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
         });
     }
 
     private void handleCkanResourceRequest(CkanFetchRequest request) {
-        // TODO use correct api
+        String ckanUrl = request.getUrl() + "/api/3/action/resource_show?id=" + request.getResourceId();
+        issueHttpRequest(ckanUrl).setHandler(ckanHandler -> {
+            if (ckanHandler.succeeded()) {
+                try {
+                    JsonObject resource = new JsonObject(ckanHandler.result());
+
+                    if (resource.getBoolean("success")) {
+                        String resourceUrl = resource.getJsonObject("result").getString("url");
+
+                        if (resourceUrl != null && resourceUrl.endsWith(".csv")) {
+                            String baseFileName = resourceUrl.substring(resourceUrl.lastIndexOf("/"), resourceUrl.lastIndexOf("."));
+
+                            getCsvFileFromUrl(resourceUrl.replaceAll(" ", "%20"), baseFileName).setHandler(csvHandler -> {
+                                if (csvHandler.succeeded()) {
+                                    JsonObject payload = new JsonObject().put("csv", csvHandler.result());
+
+                                    // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
+                                    DataSendRequest dataSendRequest =
+                                            new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.CSV, baseFileName, payload.toString());
+                                    vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
+                                } else {
+                                    LOG.error("CSV handling failed: {}", csvHandler.cause());
+                                }
+                            });
+                        }
+                    } else {
+                        LOG.error("Resource with ID [{}] not found at [{}]", request.getResourceId(), ckanUrl);
+                    }
+                } catch (Exception e) {
+                    LOG.error("Exception thrown: {}", e.getMessage());
+                }
+            } else {
+                LOG.error("CKAN import failed: {}", ckanHandler.cause());
+            }
+
+            removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
+        });
     }
 
     private Future<String> issueHttpRequest(String url) {

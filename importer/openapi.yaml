@@ -7,7 +7,7 @@ info:
     url: ""
 
 servers:
-  - url: 'http://localhost:8080'
+  - url: 'http://localhost:8123'
     description: Local development server
 
 paths:
@@ -46,8 +46,10 @@ paths:
             schema:
               $ref: '#/components/schemas/CkanImportRequest'
             examples:
-              ckanImportExample:
-                $ref: '#/components/examples/ckanImportExample'
+              ckanSearchImportExample:
+                $ref: '#/components/examples/ckanSearchImportExample'
+              ckanResourceIdImportExample:
+                $ref: '#/components/examples/ckanResourceIdImportExample'
 
       responses:
         '202':
@@ -61,7 +63,7 @@ paths:
       summary: Upload of CSV files
       operationId: uploadCsv
       requestBody:
-        description: CSV  upload details
+        description: CSV upload details
         required: true
         content:
           'multipart/formdata':
@@ -99,16 +101,6 @@ paths:
         '400':
           description: Invalid request. Either malformed JSON was provided or required fields are missing/misspelled
 
-  /running:
-    get:
-      description: View running jobs
-      summary: Returns a JSON containing all job IDs currently stored in the jobFile
-      operationId: runningJobs
-      responses:
-        '200':
-          description: Request ok
-        '500':
-          description: Server failed to read jobFile
 
 components:
   schemas:
@@ -154,7 +146,9 @@ components:
         - pipeId
         - hopsProjectId
         - hopsDataset
+        - fetchType
         - url
+        - resourceId
         - durationInHours
         - frequencyInMinutes
       properties:
@@ -167,8 +161,15 @@ components:
         hopsDataset:
             description: The dataset in hopsworks to upload the resulting CSV file to
             type: string
+        fetchType:
+            description: The type of API endpoint to be queried, either 'URL' (package_show) or 'ID' (resource_show)
+            type: string
+            enum: [URL, ID]
         url:
-            describtion: The full Ckan API URL
+            describtion: Either the full Ckan API URL using 'package_show' or a resource ID for the API endpoint 'resource_show'
+            type: string
+        resourceId:
+            describtion: Resource ID for the API endpoint 'resource_show', only required if fetchType 'ID' is selected
             type: string
         durationInHours:
             description: How long the pipeline should run for, in hours. A value < 1 will make the pipeline run exactly once
@@ -289,14 +290,28 @@ components:
                "frequencyInMinutes" : 10
              }
 
-    ckanImportExample:
-      summary: A request to import Ckan data every 10 minutes for 3 hours
+    ckanSearchImportExample:
+      summary: A request to import Ckan data once from a given URL to the package_search API endpoint
       value: {
                "pipeId" : "samplePipe",
                "hopsProjectId" : 123,
                "hopsDataset" : "myDataset",
-               "url" : "https://my-ckan-source.com/api",
-               "durationInHours" : 3,
+               "fetchType" : "URL"
+               "url" : "https://my-ckan-source.com/api/3/action/package_search?...",
+               "durationInHours" : 0,
+               "frequencyInMinutes" : 10
+              }
+
+    ckanResourceIdImportExample:
+      summary: A request to import Ckan data once from a given base URL (service host) and a know resource ID
+      value: {
+               "pipeId" : "samplePipe",
+               "hopsProjectId" : 123,
+               "hopsDataset" : "myDataset",
+               "fetchType" : "ID"
+               "url" : "https://my-ckan-source.com",
+               "resourceId" : "sampleId",
+               "durationInHours" : 0,
                "frequencyInMinutes" : 10
               }
 

@@ -7,7 +7,7 @@ info:
     url: ""
 
 servers:
-  - url: 'http://localhost:8081'
+  - url: 'http://localhost:8124'
     description: Local development server
 
 paths:
@@ -47,6 +47,7 @@ components:
         - hopsProjectId
         - hopsDataset
         - dataType
+        - baseFileName
         - payload
       properties:
         pipeId:
@@ -62,9 +63,13 @@ components:
             description: Enum indication whether the payload consists of OWM or CSV data
             type: string
             enum: [OWM, CSV, EVENT]
+        baseFileName:
+            description: A name to be given to a file. If left empty a UUID will be used.
+            type: string
         payload:
             description: Either JSON containing OWM weather data or JSON containing 'csv' data and a 'mapping'
             type: string
+
   examples:
     owmTransformationExample:
       summary: A request to transform OWM data
@@ -73,6 +78,7 @@ components:
                "hopsProjectId" : 123,
                "hopsDataset" : "myDataset",
                "dataType" : "OWM",
+               "baseFileName" : "sampleLocation",
                "payload" : "{\"coord\":{\"lon\":14.44, ... }"
              }
     csvTransformationExample:
@@ -82,6 +88,7 @@ components:
                "hopsProjectId" : 123,
                "hopsDataset" : "myDataset",
                "dataType" : "CSV",
+               "baseFileName" : "sampleFile",
                "payload" : "{\"csv\" : \"data_1,data_2, ... \", \"mapping\" : \" see README for explanation of available mappings \"}"
              }
     eventTransformationExample:
@@ -91,5 +98,6 @@ components:
                "hopsProjectId" : 123,
                "hopsDataset" : "myDataset",
                "dataType" : "EVENT",
+               "baseFileName" : "sampleFile",
                "payload" : "TODO"
              }

@@ -7,7 +7,7 @@ info:
     url: ""
 
 servers:
-  - url: 'http://localhost:8082'
+  - url: 'http://localhost:8125'
     description: Local development server
 
 paths:

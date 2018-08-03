@@ -21,6 +21,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static model.Constants.*;
@@ -100,7 +101,7 @@ public class MainVerticle extends AbstractVerticle {
         router.post("/owm").handler(this::fetchDataFromOwm);
         router.post("/ckan").handler(this::fetchDataFromCkan);
         router.post("/upload").handler(this::handleFileUpload);
-        router.post("/event").handler(this::handleCustomData);
+        router.post("/event").handler(this::handleEventData);
 
         vertx.createHttpServer().requestHandler(router::accept)
                 .listen(port, handler -> {
@@ -255,7 +256,7 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    private void handleCustomData(RoutingContext context) {
+    private void handleEventData(RoutingContext context) {
         JsonObject response = new JsonObject();
         context.response().putHeader("Content-Type", "application/json");
 
@@ -272,7 +273,7 @@ public class MainVerticle extends AbstractVerticle {
             } else {
                 payload.forEach(obj -> {
                     DataSendRequest sendRequest
-                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, obj.toString());
+                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, "event", obj.toString());
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
@@ -290,6 +291,7 @@ public class MainVerticle extends AbstractVerticle {
 
     private void handleCsvFiles(String pipeId, Integer hopsProjectId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript) {
 
+        AtomicInteger fileCount = new AtomicInteger(0);
         for (FileUpload file : files) {
             LOG.debug("Uploading file [{}]", file.uploadedFileName());
             // TODO chunk file
@@ -300,8 +302,9 @@ public class MainVerticle extends AbstractVerticle {
                             .put("mapping", mappingScript)
                             .put("csv", csv);
 
+                    // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
                     DataSendRequest sendRequest
-                            = new DataSendRequest(pipeId, hopsProjectId, hopsFolder, DataType.CSV, payload.toString());
+                            = new DataSendRequest(pipeId + fileCount.incrementAndGet(), hopsProjectId, hopsFolder, DataType.CSV, "local", payload.toString());
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));

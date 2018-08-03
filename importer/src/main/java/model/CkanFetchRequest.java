@@ -5,7 +5,9 @@ public class CkanFetchRequest {
     private String pipeId;
     private Integer hopsProjectId;
     private String hopsDataset;
+    private CkanFetchType fetchType;
     private String url;
+    private String resourceId;
 
     private Integer durationInHours;
     private Integer frequencyInMinutes;
@@ -34,12 +36,28 @@ public class CkanFetchRequest {
         this.hopsDataset = hopsDataset;
     }
 
+    public CkanFetchType getFetchType() {
+        return fetchType;
+    }
+
+    public void setFetchType(CkanFetchType fetchType) {
+        this.fetchType = fetchType;
+    }
+
     public String getUrl() {
         return url;
     }
 
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public String getResourceId() {
+        return resourceId;
+    }
+
+    public void setResourceId(String resourceId) {
+        this.resourceId = resourceId;
     }
 
     public Integer getDurationInHours() {
@@ -64,7 +82,9 @@ public class CkanFetchRequest {
                 "pipeId='" + pipeId + '\'' +
                 ", hopsProjectId=" + hopsProjectId +
                 ", hopsDataset='" + hopsDataset + '\'' +
+                ", fetchType=" + fetchType +
                 ", url='" + url + '\'' +
+                ", resourceId='" + resourceId + '\'' +
                 ", durationInHours=" + durationInHours +
                 ", frequencyInMinutes=" + frequencyInMinutes +
                 '}';

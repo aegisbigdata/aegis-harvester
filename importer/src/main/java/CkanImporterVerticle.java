@@ -2,9 +2,12 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import model.*;
+import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -13,7 +16,10 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class CkanImporterVerticle extends AbstractVerticle {
@@ -55,35 +61,96 @@ public class CkanImporterVerticle extends AbstractVerticle {
     }
 
     private void getCkanApiData(CkanFetchRequest request) {
-        vertx.executeBlocking(future -> {
-            HttpGet httpGet = new HttpGet(request.getUrl());
+        if (request.getFetchType().equals(CkanFetchType.URL)) {
+            handleCkanUrlRequest(request);
+        } else {
+            handleCkanResourceRequest(request);
+        }
+    }
+
+    private void handleCkanUrlRequest(CkanFetchRequest request) {
+        issueHttpRequest(request.getUrl()).setHandler(ckanHandler -> {
+            if (ckanHandler.succeeded()) {
+                try {
+                    AtomicInteger fileCount = new AtomicInteger(0);
+                    for (Object resultObj : new JsonObject(ckanHandler.result()).getJsonObject("result").getJsonArray("results")) {
+                        for (Object resourceObj : (((JsonObject) resultObj).getJsonArray("resources"))) {
+                            JsonObject resource = (JsonObject) resourceObj;
+                            String url = resource.getString("url");
+
+                            if (url != null && url.endsWith(".csv")) {
+                                String baseFileName = url.substring(url.lastIndexOf("/"), url.lastIndexOf("."));
+
+                                getCsvFileFromUrl(url.replaceAll(" ", "%20"), baseFileName).setHandler(csvHandler -> {
+                                    if (csvHandler.succeeded()) {
+                                        JsonObject payload = new JsonObject().put("csv", csvHandler.result());
+
+                                        // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
+                                        DataSendRequest dataSendRequest =
+                                                new DataSendRequest(request.getPipeId() + fileCount.incrementAndGet(), request.getHopsProjectId(), request.getHopsDataset(), DataType.CSV, baseFileName, payload.toString());
+                                        vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
+                                    } else {
+                                        LOG.error("CSV handling failed: {}", csvHandler.cause());
+                                    }
+                                });
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    LOG.error("Exception thrown: {}", e.getMessage());
+                }
+            } else {
+                LOG.error("CKAN import failed: {}", ckanHandler.cause());
+            }
+        });
+    }
+
+    private void handleCkanResourceRequest(CkanFetchRequest request) {
+        // TODO use correct api
+    }
+
+    private Future<String> issueHttpRequest(String url) {
+        Future<String> resultFuture = Future.future();
+        LOG.debug("Issuing GET request to [{}]", url);
+
+        vertx.executeBlocking(httpFuture -> {
+            HttpGet httpGet = new HttpGet(url);
 
             try {
                 HttpResponse response = httpClient.execute(httpGet);
                 int status = response.getStatusLine().getStatusCode();
-                JsonObject body = new JsonObject(EntityUtils.toString(response.getEntity()));
-
-                LOG.debug("Ckan API Response ({}): {}", response.getStatusLine().getStatusCode(), body);
+                String body = EntityUtils.toString(response.getEntity());
 
                 if (status < 200 || status > 400) {
-                    LOG.warn("OWM API request returned status [{}]", status);
-                    future.fail("Bad status code: " + status);
+                    resultFuture.fail("Ckan API returned status code: " + status);
                 } else {
-                    //TODO handle ckan api response
-
-                    DataSendRequest dataSendRequest =
-                            new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, body.toString());
-                    vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
+                    resultFuture.complete(body);
                 }
             } catch (IOException e) {
-                e.printStackTrace();
-                LOG.warn("GET to Ckan API failed: {}", e.getMessage());
-                future.fail("GET to Ckan API failed: " + e.getMessage());
+                resultFuture.fail("GET to Ckan API failed: " + e.getMessage());
             }
         }, result -> {
-            if (result.failed())
-                LOG.debug("Importing data from URL [{}] failed: {}", request.getUrl(), result.cause());
         });
+
+        return resultFuture;
+    }
+
+    private Future<String> getCsvFileFromUrl(String url, String fileName) {
+        Future<String> resultFuture = Future.future();
+        LOG.debug("Downloading file from [{}]", url);
+
+        vertx.executeBlocking(httpFuture -> {
+            try {
+                File csvFile = new File(config().getString("tmpDir") + fileName);
+                FileUtils.copyURLToFile(new URL(url), csvFile, 10000, 10000);
+                String csvContent = FileUtils.readFileToString(csvFile, "UTF-8");
+                resultFuture.complete(csvContent);
+            } catch (IOException e) {
+                resultFuture.fail("Failed to download file: " + e.getMessage());
+            }
+        }, result -> {});
+
+        return resultFuture;
     }
 
     // calculates the total number of times data should be read from an endpoint

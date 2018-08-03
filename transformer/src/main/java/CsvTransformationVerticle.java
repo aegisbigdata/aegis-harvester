@@ -34,7 +34,7 @@ public class CsvTransformationVerticle extends AbstractVerticle {
         ArrayList<String> lines = new ArrayList<>(Arrays.asList(payload.getString("csv").split("\\R")));
 
         CsvFile csvFile =
-                new CsvFile(DEFAULT_FILE_NAME, Arrays.asList(lines.get(0).split(",")), lines.subList(1, lines.size()), payload.getJsonObject("mapping"));
+                new CsvFile(request.getBaseFileName(), Arrays.asList(lines.get(0).split(",")), lines.subList(1, lines.size()), payload.getJsonObject("mapping"));
 
         List<CsvFile> csv;
 

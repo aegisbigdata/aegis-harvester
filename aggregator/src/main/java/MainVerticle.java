@@ -91,7 +91,7 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void handleAggregation(RoutingContext context) {
-        LOG.debug("Received request with body {}", context.getBodyAsString());
+//        LOG.debug("Received request with body {}", context.getBodyAsString());
 
         JsonObject message = context.getBodyAsJson();
         String pipeId = message.getString("pipeId");

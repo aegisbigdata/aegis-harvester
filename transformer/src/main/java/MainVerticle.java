@@ -109,7 +109,7 @@ public class MainVerticle extends AbstractVerticle {
 
     private void dispatchRequest(RoutingContext context) {
         try {
-            LOG.debug("Received request with body {}", context.getBodyAsString());
+//            LOG.debug("Received request with body {}", context.getBodyAsString());
 
             TransformationRequest request = Json.decodeValue(context.getBodyAsString(), TransformationRequest.class);
             HttpServerResponse response = context.response();

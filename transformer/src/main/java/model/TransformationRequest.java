@@ -6,6 +6,7 @@ public class TransformationRequest {
     private Integer hopsProjectId;
     private String hopsDataset;
     private DataType dataType;
+    private String baseFileName;
     private String payload;
 
     public String getPipeId() {
@@ -40,6 +41,14 @@ public class TransformationRequest {
         this.dataType = dataType;
     }
 
+    public String getBaseFileName() {
+        return baseFileName;
+    }
+
+    public void setBaseFileName(String baseFileName) {
+        this.baseFileName = baseFileName;
+    }
+
     public String getPayload() {
         return payload;
     }
@@ -55,6 +64,7 @@ public class TransformationRequest {
                 ", hopsProjectId=" + hopsProjectId +
                 ", hopsDataset='" + hopsDataset + '\'' +
                 ", dataType=" + dataType +
+                ", baseFileName='" + baseFileName + '\'' +
                 ", payload='" + payload + '\'' +
                 '}';
     }

@@ -10,12 +10,12 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ByteArrayEntity;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 public class DataSenderVerticle extends AbstractVerticle {
 
@@ -25,19 +25,19 @@ public class DataSenderVerticle extends AbstractVerticle {
 
     @Override
     public void start(Future<Void> future) {
-        vertx.eventBus().consumer(Constants.MSG_SEND_DATA, this::sendWeatherData);
+        vertx.eventBus().consumer(Constants.MSG_SEND_DATA, this::sendData);
 
         httpClient = HttpClients.createDefault();
         future.complete();
     }
 
 
-    private Future<Void> sendWeatherData(Message<String> message) {
+    private Future<Void> sendData(Message<String> message) {
         Future<Void> future = Future.future();
 
         try {
-            DataSendRequest request = Json.decodeValue(message.body(), DataSendRequest.class);
-            LOG.debug("Received {}", request.toString());
+//            DataSendRequest request = Json.decodeValue(message.body(), DataSendRequest.class);
+//            LOG.debug("Received {}", request.toString());
 
             String url = "http://"
                     + config().getString("target.host") + ":"
@@ -49,7 +49,7 @@ public class DataSenderVerticle extends AbstractVerticle {
                     HttpPost postRequest = new HttpPost(url);
                     postRequest.setHeader("Content-Type", "application/json");
 
-                    HttpEntity entity = new ByteArrayEntity(message.body().getBytes("UTF-8"));
+                    HttpEntity entity = new ByteArrayEntity(message.body().getBytes(StandardCharsets.UTF_8));
                     postRequest.setEntity(entity);
 
                     HttpResponse response = httpClient.execute(postRequest);

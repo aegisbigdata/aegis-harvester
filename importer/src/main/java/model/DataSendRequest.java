@@ -6,15 +6,17 @@ public class DataSendRequest {
     private Integer hopsProjectId;
     private String hopsDataset;
     private DataType dataType;
+    private String baseFileName;
     private String payload;
 
     public DataSendRequest() {}
 
-    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String payload) {
+    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String payload) {
         this.pipeId = pipeId;
         this.hopsProjectId = hopsProjectId;
         this.hopsDataset = hopsDataset;
         this.dataType = dataType;
+        this.baseFileName = baseFileName;
         this.payload = payload;
     }
 
@@ -50,6 +52,14 @@ public class DataSendRequest {
         this.dataType = dataType;
     }
 
+    public String getBaseFileName() {
+        return baseFileName;
+    }
+
+    public void setBaseFileName(String baseFileName) {
+        this.baseFileName = baseFileName;
+    }
+
     public String getPayload() {
         return payload;
     }
@@ -65,6 +75,7 @@ public class DataSendRequest {
                 ", hopsProjectId=" + hopsProjectId +
                 ", hopsDataset='" + hopsDataset + '\'' +
                 ", dataType=" + dataType +
+                ", baseFileName='" + baseFileName + '\'' +
                 ", payload='" + payload + '\'' +
                 '}';
     }

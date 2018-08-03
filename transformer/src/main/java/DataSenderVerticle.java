@@ -28,7 +28,7 @@ public class DataSenderVerticle extends AbstractVerticle {
 
     private void sendLine(Message<String> message) {
         DataSendRequest request = Json.decodeValue(message.body(), DataSendRequest.class);
-        LOG.debug("Sending csv [{}]", request.getCsvHeaders() + "\n" + request.getCsvPayload());
+//        LOG.debug("Sending csv [{}]", request.getCsvHeaders() + "\n" + request.getCsvPayload());
 
         JsonObject json = new JsonObject();
         json.put("pipeId", request.getPipeId());

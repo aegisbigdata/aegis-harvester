@@ -41,7 +41,7 @@ public class AggregationVerticle extends AbstractVerticle {
 
     private void aggregate(Message<String> message) {
         WriteRequest request = Json.decodeValue(message.body(), WriteRequest.class);
-        LOG.debug("Received {}", request.toString());
+//        LOG.debug("Received {}", request.toString());
 
         String fileName = config().getString("fileDir") + "/"
                 + new SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(new Date()).replace(" ", "T")
@@ -85,7 +85,7 @@ public class AggregationVerticle extends AbstractVerticle {
     }
 
     private void writeToFilePeriodically() {
-        buffer.forEach((pipeId, data) -> vertx.fileSystem().open(fileNames.get(pipeId), new OpenOptions().setAppend(true), ar -> {
+        buffer.forEach((pipeId, data) -> vertx.fileSystem().open(fileNames.get(pipeId), new OpenOptions().setCreate(true).setAppend(true), ar -> {
             if (ar.succeeded()) {
                 AsyncFile ws = ar.result();
 

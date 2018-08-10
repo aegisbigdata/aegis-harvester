@@ -41,10 +41,11 @@ public class CkanImporterVerticle extends AbstractVerticle {
         AtomicLong triggerCounter = new AtomicLong(0);  // atomic so variable is permitted in lambda expression
         LOG.debug("Importing [{}] times for pipe with ID [{}]", totalTicks, request.getPipeId());
 
-        getCkanApiData(request);   // periodic timer waits before first request
-
         // duration of 0 hours is defined to trigger exactly once
         if (request.getDurationInHours() > 0) {
+
+            getCkanApiData(request, false); // periodic timer waits before first request
+
             vertx.setPeriodic(request.getFrequencyInMinutes() * 60000, id -> {
                 if (triggerCounter.get() == totalTicks) {
                     vertx.cancelTimer(id);
@@ -52,21 +53,23 @@ public class CkanImporterVerticle extends AbstractVerticle {
                     LOG.debug("Pipe with ID [{}] done", request.getPipeId());
                 } else {
                     triggerCounter.addAndGet(1);
-                    getCkanApiData(request);
+                    getCkanApiData(request, false);
                 }
             });
-        }
-    }
-
-    private void getCkanApiData(CkanFetchRequest request) {
-        if (request.getFetchType().equals(CkanFetchType.URL)) {
-            handleCkanUrlRequest(request);
         } else {
-            handleCkanResourceRequest(request);
+            getCkanApiData(request, true);
         }
     }
 
-    private void handleCkanUrlRequest(CkanFetchRequest request) {
+    private void getCkanApiData(CkanFetchRequest request, boolean removeJobFromFile) {
+        if (request.getFetchType().equals(CkanFetchType.URL)) {
+            handleCkanUrlRequest(request, removeJobFromFile);
+        } else {
+            handleCkanResourceRequest(request, removeJobFromFile);
+        }
+    }
+
+    private void handleCkanUrlRequest(CkanFetchRequest request, boolean removeJobFromFile) {
         issueHttpRequest(request.getUrl()).setHandler(ckanHandler -> {
             if (ckanHandler.succeeded()) {
                 try {
@@ -101,11 +104,14 @@ public class CkanImporterVerticle extends AbstractVerticle {
                 LOG.error("CKAN import failed: {}", ckanHandler.cause());
             }
 
-            removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
+            if (removeJobFromFile) {
+                removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
+                LOG.debug("Pipe with ID [{}] done", request.getPipeId());
+            }
         });
     }
 
-    private void handleCkanResourceRequest(CkanFetchRequest request) {
+    private void handleCkanResourceRequest(CkanFetchRequest request, boolean removeJobFromFile) {
         String ckanUrl = request.getUrl() + "/api/3/action/resource_show?id=" + request.getResourceId();
         issueHttpRequest(ckanUrl).setHandler(ckanHandler -> {
             if (ckanHandler.succeeded()) {
@@ -141,7 +147,10 @@ public class CkanImporterVerticle extends AbstractVerticle {
                 LOG.error("CKAN import failed: {}", ckanHandler.cause());
             }
 
-            removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
+            if (removeJobFromFile) {
+                removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
+                LOG.debug("Pipe with ID [{}] done", request.getPipeId());
+            }
         });
     }
 

@@ -158,9 +158,9 @@ public class MainVerticle extends AbstractVerticle {
                     response.put("message", "Frequency lower than total duration");
                     context.response().setStatusCode(400);
                 } else {
-                    vertx.eventBus().send(DataType.OWM.getEventBusAddress(), context.getBodyAsString());
-
                     writeJobToFile(jobFile, request.getPipeId());
+
+                    vertx.eventBus().send(DataType.OWM.getEventBusAddress(), context.getBodyAsString());
                     context.response().setStatusCode(202);
                 }
             } catch (DecodeException e) {
@@ -195,9 +195,9 @@ public class MainVerticle extends AbstractVerticle {
                     response.put("message", "Frequency lower than total duration");
                     context.response().setStatusCode(400);
                 } else {
-                    vertx.eventBus().send(DataType.CKAN.getEventBusAddress(), context.getBodyAsString());
-
                     writeJobToFile(jobFile, request.getPipeId());
+
+                    vertx.eventBus().send(DataType.CKAN.getEventBusAddress(), context.getBodyAsString());
                     context.response().setStatusCode(202);
                 }
             } catch (DecodeException e) {

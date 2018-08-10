@@ -54,10 +54,10 @@ public class OwmImporterVerticle extends AbstractVerticle {
         AtomicLong triggerCounter = new AtomicLong(0);  // atomic so variable is permitted in lambda expression
         LOG.debug("Importing [{}] times for pipe with ID [{}]", totalTicks, request.getPipeId());
 
-        getOwmApiData(owmUrl + params.toString(), request);   // periodic timer waits before first request
-
         // duration of 0 hours is defined to trigger exactly once
         if (request.getDurationInHours() > 0) {
+            getOwmApiData(owmUrl + params.toString(), request, false);   // periodic timer waits before first request
+
             vertx.setPeriodic(request.getFrequencyInMinutes() * 60000, id -> {
                 if (triggerCounter.get() == totalTicks) {
                     vertx.cancelTimer(id);
@@ -65,13 +65,15 @@ public class OwmImporterVerticle extends AbstractVerticle {
                     LOG.debug("Pipe with ID [{}] done", request.getPipeId());
                 } else {
                     triggerCounter.addAndGet(1);
-                    getOwmApiData(owmUrl + params.toString(), request);
+                    getOwmApiData(owmUrl + params.toString(), request, false);
                 }
             });
+        } else {
+            getOwmApiData(owmUrl + params.toString(), request, true);
         }
     }
 
-    private void getOwmApiData(String owmUrl, OwmFetchRequest request) {
+    private void getOwmApiData(String owmUrl, OwmFetchRequest request, boolean removeJobFromFile) {
         LOG.debug("Request URL: {}", owmUrl);
 
         vertx.executeBlocking(future -> {
@@ -99,6 +101,7 @@ public class OwmImporterVerticle extends AbstractVerticle {
                                 new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, "owm_weather", body.toString());
                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                     }
+                    future.complete();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -108,6 +111,11 @@ public class OwmImporterVerticle extends AbstractVerticle {
         }, result -> {
             if (result.failed())
                 LOG.debug("Importing weather data from URL [{}] failed: {}", owmUrl, result.cause());
+
+            if (removeJobFromFile) {
+                removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
+                LOG.debug("Pipe with ID [{}] done", request.getPipeId());
+            }
         });
     }
 

@@ -6,15 +6,24 @@
     </encoder>
   </appender>
 
-  <logger name="com.mchange.v2" level="warn"/>
-  <logger name="io.netty" level="warn"/>
-  <logger name="io.vertx" level="info"/>
-  <logger name="de.fhg.fokus.viaduct.aegis" level="debug"/>
-  <logger name="de.fokus.fraunhofer.hopsworks" level="warn"/>
+  <appender name="FILE" class ="ch.qos.logback.core.FileAppender">
+    <file>/tmp/pipeline.log</file>
+    <append>true</append>
+    <immediateFlush>true</immediateFlush>
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [EXPORTER] [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="com.mchange.v2" level="warn" />
+  <logger name="io.netty" level="warn" />
+  <logger name="io.vertx" level="info" />
+  <logger name="de.fhg.fokus.viaduct.aegis" level="debug" />
+  <logger name="de.fokus.fraunhofer.hopsworks" level="warn" />
 
   <root level="debug">
-    <appender-ref ref="STDOUT"/>
+    <appender-ref ref="STDOUT" />
+    <appender-ref ref="FILE" />
   </root>
 
 </configuration>
-

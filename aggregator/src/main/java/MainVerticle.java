@@ -37,10 +37,13 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private Future<Void> loadConfig() {
+        LOG.info("Loading config...");
+
         Future<Void> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
             if (handler.succeeded()) {
+                LOG.info("Config successfully loaded");
                 config = handler.result();
                 future.complete();
             } else {
@@ -52,6 +55,8 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private Future<Void> bootstrapVerticle() {
+        LOG.info("Deploying aggregation verticle...");
+
         Future<Void> future = Future.future();
 
         DeploymentOptions options = new DeploymentOptions()
@@ -60,6 +65,7 @@ public class MainVerticle extends AbstractVerticle {
 
         vertx.deployVerticle(AggregationVerticle.class.getName(), options, handler -> {
             if (handler.succeeded()) {
+                LOG.info("Aggregation verticle successfully deployed");
                 future.complete();
             } else {
                 future.fail("Failed to deploy aggregation verticle: " + handler.cause());
@@ -70,6 +76,8 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private Future<Void> startServer() {
+        LOG.info("Starting server...");
+
         Future<Void> future = Future.future();
         Integer port = config.getInteger("http.port");
 
@@ -91,7 +99,8 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void handleAggregation(RoutingContext context) {
-//        LOG.debug("Received request with body {}", context.getBodyAsString());
+        LOG.info("Received request...");
+        // LOG.debug("Received request with body {}", context.getBodyAsString());
 
         JsonObject message = context.getBodyAsJson();
         String pipeId = message.getString("pipeId");

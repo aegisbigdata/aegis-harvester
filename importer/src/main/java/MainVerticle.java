@@ -62,6 +62,8 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private Future<Void> loadConfig() {
+        LOG.info("Loading config...");
+
         Future<Void> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {

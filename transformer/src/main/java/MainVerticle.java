@@ -43,10 +43,13 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private Future<Void> loadConfig() {
+        LOG.info("Loading config...");
+
         Future<Void> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
             if (handler.succeeded()) {
+                LOG.info("Config successfully loaded");
                 config = handler.result();
                 future.complete();
             } else {
@@ -73,13 +76,16 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private Future<Void> startVerticle(DeploymentOptions options, String className) {
+        LOG.info("Deploying verticle: {}", className);
+
         Future<Void> future = Future.future();
 
         vertx.deployVerticle(className, options, handler -> {
             if (handler.succeeded()) {
+                LOG.info("Successfully Deployed verticle: {}", className);
                 future.complete();
             } else {
-                future.fail("Failed to deploy : " + className + " ,cause : " + handler.cause());
+                future.fail("Failed to deploy : " + className + ", cause : " + handler.cause());
             }
         });
 
@@ -87,6 +93,8 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private Future<Void> startServer() {
+        LOG.info("Starting server...");
+
         Future<Void> future = Future.future();
         Integer port = config.getInteger("http.port");
 
@@ -109,21 +117,24 @@ public class MainVerticle extends AbstractVerticle {
 
     private void dispatchRequest(RoutingContext context) {
         try {
-//            LOG.debug("Received request with body {}", context.getBodyAsString());
+            // LOG.debug("Received request with body {}", context.getBodyAsString());
 
             TransformationRequest request = Json.decodeValue(context.getBodyAsString(), TransformationRequest.class);
             HttpServerResponse response = context.response();
 
             switch (request.getDataType()) {
                 case OWM:
+                    LOG.info("Received request: OWM");
                     vertx.eventBus().send(DataType.OWM.getEventBusAddress(), context.getBodyAsString());
                     response.setStatusCode(202);
                     break;
                 case CSV:
+                    LOG.info("Received request: CSV");
                     vertx.eventBus().send(DataType.CSV.getEventBusAddress(), context.getBodyAsString());
                     response.setStatusCode(202);
                     break;
                 case EVENT:
+                    LOG.info("Received request: EVENT");
                     vertx.eventBus().send(DataType.EVENT.getEventBusAddress(), context.getBodyAsString());
                     response.setStatusCode(202);
                     break;

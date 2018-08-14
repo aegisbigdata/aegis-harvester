@@ -41,7 +41,7 @@ public class AggregationVerticle extends AbstractVerticle {
 
     private void aggregate(Message<String> message) {
         WriteRequest request = Json.decodeValue(message.body(), WriteRequest.class);
-//        LOG.debug("Received {}", request.toString());
+        // LOG.debug("Received {}", request.toString());
 
         String fileName = config().getString("fileDir") + "/"
                 + new SimpleDateFormat("yyyy-MM-dd HH-mm-ss").format(new Date()).replace(" ", "T")
@@ -51,7 +51,7 @@ public class AggregationVerticle extends AbstractVerticle {
                     : UUID.randomUUID().toString())
                 + ".csv";
 
-        LOG.debug("Aggregating file [{}]", fileName);
+        LOG.info("Aggregating file [{}]", fileName);
 
         if (request.getAggregate()) {
             if (buffer.containsKey(request.getPipeId())) {
@@ -76,6 +76,7 @@ public class AggregationVerticle extends AbstractVerticle {
 
             vertx.fileSystem().writeFile(fileName, Buffer.buffer(fileContent), handler -> {
                 if (handler.succeeded()) {
+                    LOG.info("Write to file [{}] succeeded", fileName);
                     exportFile(request);
                 } else {
                     LOG.error("Failed to write to file [{}] : {}", fileName, handler.cause());
@@ -87,6 +88,8 @@ public class AggregationVerticle extends AbstractVerticle {
     private void writeToFilePeriodically() {
         buffer.forEach((pipeId, data) -> vertx.fileSystem().open(fileNames.get(pipeId), new OpenOptions().setCreate(true).setAppend(true), ar -> {
             if (ar.succeeded()) {
+                LOG.info("Write to file [{}] succeeded", fileNames.get(pipeId));
+
                 AsyncFile ws = ar.result();
 
                 data.forEach(line -> {
@@ -104,7 +107,7 @@ public class AggregationVerticle extends AbstractVerticle {
     }
 
     private void exportFile(WriteRequest request) {
-        LOG.debug("Exporting file [{}]", fileNames.get(request.getPipeId()));
+        LOG.info("Exporting file [{}]", fileNames.get(request.getPipeId()));
 
         JsonObject message = new JsonObject();
         message.put("pipeId", request.getPipeId());
@@ -119,6 +122,8 @@ public class AggregationVerticle extends AbstractVerticle {
         webClient.post(port, host, requestURI)
                 .sendJson(message, postResult -> {
                     if (postResult.succeeded()) {
+                        LOG.info("POST to [{}] on port [{}] succeeded", host + requestURI, port);
+
                         HttpResponse<Buffer> postResponse = postResult.result();
 
                         if (!(200 <= postResponse.statusCode() && postResponse.statusCode() < 400))

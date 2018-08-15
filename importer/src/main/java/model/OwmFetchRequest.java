@@ -11,6 +11,9 @@ public class OwmFetchRequest {
     private Integer durationInHours;
     private Integer frequencyInMinutes;
 
+    private String user;
+    private String password;
+
     public String getPipeId() {
         return pipeId;
     }
@@ -67,6 +70,22 @@ public class OwmFetchRequest {
         this.frequencyInMinutes = frequencyInMinutes;
     }
 
+    public String getUser() {
+        return user;
+    }
+
+    public void setUser(String user) {
+        this.user = user;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
     @Override
     public String toString() {
         return "OwmFetchRequest{" +
@@ -77,6 +96,8 @@ public class OwmFetchRequest {
                 ", value='" + value + '\'' +
                 ", durationInHours=" + durationInHours +
                 ", frequencyInMinutes=" + frequencyInMinutes +
+                ", user=" + user +
+                ", password=" + password +
                 '}';
     }
 }

@@ -40,6 +40,8 @@ public class DataSenderVerticle extends AbstractVerticle {
         json.put("csvHeaders", request.getCsvHeaders());
         json.put("payload", request.getCsvPayload());
         json.put("aggregate", request.getAggregate());
+        json.put("user", request.getUser());
+        json.put("password", request.getPassword());
 
         Integer port = config().getInteger("target.port");
         String host = config().getString("target.host");

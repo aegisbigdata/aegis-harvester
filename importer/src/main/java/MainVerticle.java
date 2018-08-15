@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 import static model.Constants.*;
 
@@ -32,6 +33,7 @@ public class MainVerticle extends AbstractVerticle {
 
     private JsonObject config;
     private String jobFile;
+    private String logFile;
 
     @Override
     public void start() {
@@ -70,6 +72,7 @@ public class MainVerticle extends AbstractVerticle {
             if (handler.succeeded()) {
                 config = handler.result();
                 jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
+                logFile = config.getString("tmpDir") + "/" + LOG_FILE_NAME;
                 future.complete();
             } else {
                 future.fail("Failed to load config: " + handler.cause());
@@ -99,7 +102,9 @@ public class MainVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create().setUploadsDirectory(config.getString("tmpDir")));
+        router.get("/").handler(this::welcomeHandler);
         router.get("/running").handler(this::runningJobshandler);
+        router.get("/state").handler(this::stateHandler);
         router.post("/owm").handler(this::fetchDataFromOwm);
         router.post("/ckan").handler(this::fetchDataFromCkan);
         router.post("/upload").handler(this::handleFileUpload);
@@ -115,7 +120,33 @@ public class MainVerticle extends AbstractVerticle {
                     }
                 });
 
+        // initially create job file
+        vertx.fileSystem().open(jobFile, new OpenOptions().setAppend(true), ar -> {
+            if (ar.succeeded()) {
+                LOG.info("Successfully created job file [{}]", jobFile);
+            } else {
+                LOG.error("Could create job file [{}]", jobFile);
+            }
+        });
+
         return future;
+    }
+
+    private void welcomeHandler(RoutingContext context) {
+      getRunningJobsFromFile(jobFile).setHandler(handler -> {
+          JsonObject response = new JsonObject();
+
+          response.put("message", "Welcome to weather-harvester-demo");
+          response.put("version", "0.1");
+
+          if (handler.succeeded()) {
+              response.put("running", handler.result());
+          }
+
+          context.response().setStatusCode(200);
+          context.response().putHeader("Content-Type", "application/json");
+          context.response().end(response.encode());
+      });
     }
 
     private void runningJobshandler(RoutingContext context) {
@@ -133,6 +164,72 @@ public class MainVerticle extends AbstractVerticle {
             context.response().putHeader("Content-Type", "application/json");
             context.response().end(response.encode());
         });
+    }
+
+    private void stateHandler(RoutingContext context) {
+        getStateFromLog(logFile).setHandler(handler -> {
+            JsonObject response = new JsonObject();
+
+            if (handler.succeeded()) {
+                context.response().setStatusCode(200);
+                response.put("state", handler.result());
+            } else {
+                context.response().setStatusCode(500);
+            }
+
+            context.response().setStatusCode(200);
+            context.response().putHeader("Content-Type", "application/json");
+            context.response().end(response.encode());
+        });
+    }
+
+    private Future<JsonObject> getStateFromLog(String filePath) {
+        Future<JsonObject> currentState = Future.future();
+
+        vertx.<JsonObject>executeBlocking(handler -> {
+            JsonObject state = new JsonObject();
+
+            state.put("importer", getStateFromFile(filePath, "IMPORTER"));
+            state.put("transformer", getStateFromFile(filePath, "TRANSFORMER"));
+            state.put("aggregator", getStateFromFile(filePath, "AGGREGATOR"));
+            state.put("exporter", getStateFromFile(filePath, "EXPORTER"));
+
+            handler.complete(state);
+        }, result -> {
+            if (result.succeeded()) {
+                currentState.complete(result.result());
+            } else {
+                currentState.fail("Failed to read log file " + result.cause());
+            }
+        });
+
+        return currentState;
+    }
+
+    private String getStateFromFile(String filePath, String component) {
+        String result = "";
+
+        Stream<String> stream = null;
+
+        try {
+            stream = Files.lines(Paths.get(filePath));
+        } catch (IOException e) {
+            LOG.error("Failed to read log file: {}", e.getMessage());
+        }
+
+        try {
+            result = stream
+                //.filter(line -> line.contains("INFO"))
+                .filter(line -> line.contains(component))
+                .reduce((first, second) -> second)
+                .orElse(null)
+                .split(" - ")[1];
+        } catch (NullPointerException e) {
+            LOG.warn("No [{}] log available", component);
+            result = "N/A";
+        }
+
+        return result;
     }
 
     private void fetchDataFromOwm(RoutingContext context) {
@@ -159,6 +256,9 @@ public class MainVerticle extends AbstractVerticle {
                 } else if (request.getDurationInHours() != 0 && request.getDurationInHours() * 60 < request.getFrequencyInMinutes()) {
                     response.put("message", "Frequency lower than total duration");
                     context.response().setStatusCode(400);
+                } else if (request.getFrequencyInMinutes() < 1) {
+                    response.put("message", "Frequency lower than 1 (frequencyInMinutes)");
+                    context.response().setStatusCode(400);
                 } else {
                     writeJobToFile(jobFile, request.getPipeId());
 
@@ -175,7 +275,6 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private void fetchDataFromCkan(RoutingContext context) {
-
         List<String> runningJobs = new ArrayList<>();
         getRunningJobsFromFile(jobFile).setHandler(handler -> {
             if (handler.succeeded()) {
@@ -195,6 +294,9 @@ public class MainVerticle extends AbstractVerticle {
                     context.response().setStatusCode(400);
                 } else if (request.getDurationInHours() != 0 && request.getDurationInHours() * 60 < request.getFrequencyInMinutes()) {
                     response.put("message", "Frequency lower than total duration");
+                    context.response().setStatusCode(400);
+                } else if (request.getFrequencyInMinutes() < 1) {
+                    response.put("message", "Frequency lower than 1 (frequencyInMinutes)");
                     context.response().setStatusCode(400);
                 } else {
                     writeJobToFile(jobFile, request.getPipeId());
@@ -229,12 +331,14 @@ public class MainVerticle extends AbstractVerticle {
                 Integer hopsProjectId = Integer.valueOf(attributes.get(KEY_HOPS_PROJECT_ID));
                 String hopsDataset = attributes.get(KEY_HOPS_DATASET);
                 JsonObject csvMapping = new JsonObject(attributes.get("mapping"));
+                String user = attributes.get("user");
+                String password = attributes.get("password");
 
                 if (pipeId != null && !runningJobs.contains(pipeId)) {
                     if (hopsDataset != null && !hopsDataset.isEmpty()) {
 
                         writeJobToFile(jobFile, pipeId);
-                        handleCsvFiles(pipeId, hopsProjectId, hopsDataset, context.fileUploads(), csvMapping);
+                        handleCsvFiles(pipeId, hopsProjectId, hopsDataset, context.fileUploads(), csvMapping, user, password);
                         removeJobFromFile(jobFile, pipeId);
 
                         context.response().setStatusCode(202);
@@ -268,6 +372,8 @@ public class MainVerticle extends AbstractVerticle {
             Integer hopsProjectId = request.getInteger(KEY_HOPS_PROJECT_ID);
             String hopsDataset = request.getString(KEY_HOPS_DATASET);
             JsonArray payload = request.getJsonArray("payload");
+            String user = request.getString("user");
+            String password = request.getString("password");
 
             if (pipeId == null) {
                 response.put("message", "Please provide a pipe ID (pipeId)");
@@ -275,7 +381,7 @@ public class MainVerticle extends AbstractVerticle {
             } else {
                 payload.forEach(obj -> {
                     DataSendRequest sendRequest
-                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, "event", obj.toString());
+                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, "event", obj.toString(), user, password);
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
@@ -291,7 +397,7 @@ public class MainVerticle extends AbstractVerticle {
         context.response().end(response.encode());
     }
 
-    private void handleCsvFiles(String pipeId, Integer hopsProjectId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript) {
+    private void handleCsvFiles(String pipeId, Integer hopsProjectId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript, String user, String password) {
 
         AtomicInteger fileCount = new AtomicInteger(0);
         for (FileUpload file : files) {
@@ -306,7 +412,7 @@ public class MainVerticle extends AbstractVerticle {
 
                     // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
                     DataSendRequest sendRequest
-                            = new DataSendRequest(pipeId + fileCount.incrementAndGet(), hopsProjectId, hopsFolder, DataType.CSV, "local", payload.toString());
+                            = new DataSendRequest(pipeId + fileCount.incrementAndGet(), hopsProjectId, hopsFolder, DataType.CSV, "local", payload.toString(), user, password);
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));

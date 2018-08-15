@@ -9,6 +9,9 @@ public class TransformationRequest {
     private String baseFileName;
     private String payload;
 
+    private String user;
+    private String password;
+
     public String getPipeId() {
         return pipeId;
     }
@@ -57,6 +60,22 @@ public class TransformationRequest {
         this.payload = payload;
     }
 
+    public String getUser() {
+        return user;
+    }
+
+    public void setUser(String user) {
+        this.user = user;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
     @Override
     public String toString() {
         return "TransformationRequest{" +
@@ -66,6 +85,8 @@ public class TransformationRequest {
                 ", dataType=" + dataType +
                 ", baseFileName='" + baseFileName + '\'' +
                 ", payload='" + payload + '\'' +
+                ", user='" + user + '\'' +
+                ", password='" + password + '\'' +
                 '}';
     }
 }

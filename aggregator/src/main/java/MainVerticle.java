@@ -100,7 +100,7 @@ public class MainVerticle extends AbstractVerticle {
 
     private void handleAggregation(RoutingContext context) {
         LOG.info("Received request...");
-        // LOG.debug("Received request with body {}", context.getBodyAsString());
+        //LOG.debug("Received request with body {}", context.getBodyAsString());
 
         JsonObject message = context.getBodyAsJson();
         String pipeId = message.getString("pipeId");
@@ -110,9 +110,14 @@ public class MainVerticle extends AbstractVerticle {
         String csvHeaders = message.getString("csvHeaders");
         String csvData = message.getString("payload");
         Boolean aggregate = message.getBoolean("aggregate");
+        String user = message.getString("user");
+        String password = message.getString("password");
+
+        LOG.debug("user : {}", context.getBodyAsJson().getString("user"));
+        LOG.debug("password : {}", context.getBodyAsJson().getString("password"));
 
         WriteRequest request
-                = new WriteRequest(pipeId, hopsProjectId, hopsDataset, baseFileName, csvHeaders, csvData, aggregate);
+                = new WriteRequest(pipeId, hopsProjectId, hopsDataset, baseFileName, csvHeaders, csvData, aggregate, user, password);
         vertx.eventBus().send(Constants.MSG_AGGREGATE, Json.encode(request));
 
         context.response()

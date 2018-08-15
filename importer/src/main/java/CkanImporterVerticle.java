@@ -88,7 +88,7 @@ public class CkanImporterVerticle extends AbstractVerticle {
 
                                         // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
                                         DataSendRequest dataSendRequest =
-                                                new DataSendRequest(request.getPipeId() + fileCount.incrementAndGet(), request.getHopsProjectId(), request.getHopsDataset(), DataType.CSV, baseFileName, payload.toString());
+                                                new DataSendRequest(request.getPipeId() + fileCount.incrementAndGet(), request.getHopsProjectId(), request.getHopsDataset(), DataType.CSV, baseFileName, payload.toString(), request.getUser(), request.getPassword());
                                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                                     } else {
                                         LOG.error("CSV handling failed: {}", csvHandler.cause());
@@ -130,7 +130,8 @@ public class CkanImporterVerticle extends AbstractVerticle {
 
                                     // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
                                     DataSendRequest dataSendRequest =
-                                            new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.CSV, baseFileName, payload.toString());
+                                            new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.CSV, baseFileName, payload.toString(), request.getUser(), request.getPassword());
+
                                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                                 } else {
                                     LOG.error("CSV handling failed: {}", csvHandler.cause());

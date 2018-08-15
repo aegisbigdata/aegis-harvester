@@ -93,12 +93,12 @@ public class OwmImporterVerticle extends AbstractVerticle {
                     if (OWM_TYPE_BBOX.equals(request.getType())) {
                         for (Object obj : body.getJsonArray("list")) {
                             DataSendRequest dataSendRequest =
-                                    new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, "owm_weather", (String) obj);
+                                    new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, "owm_weather", (String) obj, request.getUser(), request.getPassword());
                             vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                         }
                     } else {
                         DataSendRequest dataSendRequest =
-                                new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, "owm_weather", body.toString());
+                                new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, "owm_weather", body.toString(), request.getUser(), request.getPassword());
                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                     }
                     future.complete();

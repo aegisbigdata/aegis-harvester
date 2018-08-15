@@ -35,12 +35,16 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private Future<JsonObject> loadConfig() {
+        LOG.info("Loading config...");
+
         Future<JsonObject> future = Future.future();
 
         ConfigRetriever.create(vertx).getConfig(handler -> {
             if (handler.succeeded()) {
+                LOG.info("Config successfully loaded");
                 future.complete(handler.result());
             } else {
+                LOG.error("Failed to load config, cause {}", handler.cause());
                 future.fail("Failed to load config: " + handler.cause());
             }
         });
@@ -49,6 +53,8 @@ public class MainVerticle extends AbstractVerticle {
     }
 
     private Future<Void> startServer(JsonObject config) {
+        LOG.info("Starting server...");
+
         Future<Void> future = Future.future();
         Integer port = config.getInteger("http.port");
 
@@ -74,6 +80,9 @@ public class MainVerticle extends AbstractVerticle {
     private void handleExport(RoutingContext context, JsonObject config) {
         LOG.debug("Received request with body {}", context.getBodyAsString());
 
+        String pipeId = context.getBodyAsJson().getString("pipeId");
+        LOG.info("Received request with pipeId [{}]", pipeId);
+
         Integer hopsProjectId = context.getBodyAsJson().getInteger("hopsProjectId");
         String hopsDataset = "upload/" + context.getBodyAsJson().getString("hopsDataset");
         String filePath = context.getBodyAsJson().getString("payload");
@@ -83,8 +92,17 @@ public class MainVerticle extends AbstractVerticle {
                 .end();
 
         String url = config.getJsonObject("aegis").getString("url");  //test server
-        String email = config.getJsonObject("aegis").getString("user");
-        String password = config.getJsonObject("aegis").getString("password");
+
+        String email;
+        String password;
+
+        if(context.getBodyAsJson().getString("user") != null && context.getBodyAsJson().getString("password") != null) {
+            email = context.getBodyAsJson().getString("user");
+            password = context.getBodyAsJson().getString("password");
+        } else {
+            email = config.getJsonObject("aegis").getString("user");
+            password = config.getJsonObject("aegis").getString("password");
+        }
 
         vertx.executeBlocking(future -> {
             if (Files.exists(Paths.get(filePath))) {
@@ -92,7 +110,7 @@ public class MainVerticle extends AbstractVerticle {
                 HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email, password, url);
                 hopsworksAdapter.actionUploadFile(hopsProjectId.toString(), hopsDataset, filePath);
 
-                LOG.debug("Uploaded file [{}] to hopsworks", filePath);
+                LOG.info("Uploaded file [{}] to hopsworks with pipeId [{}]", filePath, pipeId);
 
                 vertx.fileSystem().delete(filePath, deleteHandler -> {
                             if (deleteHandler.failed())
@@ -105,7 +123,7 @@ public class MainVerticle extends AbstractVerticle {
             }
         }, result -> {
             if (result.failed()) {
-                LOG.info("Failed to export file [{}] to HopsWorks: ", filePath, result.cause());
+                LOG.info("Failed to export file [{}] to HopsWorks with pipeId [{}] : ", filePath, pipeId, result.cause());
             }
         });
     }

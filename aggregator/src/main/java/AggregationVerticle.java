@@ -109,11 +109,15 @@ public class AggregationVerticle extends AbstractVerticle {
     private void exportFile(WriteRequest request) {
         LOG.info("Exporting file [{}]", fileNames.get(request.getPipeId()));
 
+        // LOG.debug("request : {}", request.toString());
+
         JsonObject message = new JsonObject();
         message.put("pipeId", request.getPipeId());
         message.put("hopsProjectId", request.getHopsProjectId());
         message.put("hopsDataset", request.getHopsDataset());
         message.put("payload", fileNames.get(request.getPipeId()));
+        message.put("user", request.getUser());
+        message.put("password", request.getPassword());
 
         Integer port = config().getInteger("target.port");
         String host = config().getString("target.host");

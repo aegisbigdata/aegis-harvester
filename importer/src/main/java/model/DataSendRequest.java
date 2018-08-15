@@ -8,16 +8,20 @@ public class DataSendRequest {
     private DataType dataType;
     private String baseFileName;
     private String payload;
+    private String user;
+    private String password;
 
     public DataSendRequest() {}
 
-    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String payload) {
+    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String payload, String user, String password) {
         this.pipeId = pipeId;
         this.hopsProjectId = hopsProjectId;
         this.hopsDataset = hopsDataset;
         this.dataType = dataType;
         this.baseFileName = baseFileName;
         this.payload = payload;
+        this.user = user;
+        this.password = password;
     }
 
     public String getPipeId() {
@@ -68,6 +72,22 @@ public class DataSendRequest {
         this.payload = payload;
     }
 
+    public String getUser() {
+        return user;
+    }
+
+    public void setUser(String user) {
+        this.user = user;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
     @Override
     public String toString() {
         return "DataSendRequest{" +
@@ -77,6 +97,8 @@ public class DataSendRequest {
                 ", dataType=" + dataType +
                 ", baseFileName='" + baseFileName + '\'' +
                 ", payload='" + payload + '\'' +
+                ", user='" + user + '\'' +
+                ", password='" + password + '\'' +
                 '}';
     }
 }

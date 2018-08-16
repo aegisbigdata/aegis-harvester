@@ -35,11 +35,11 @@ paths:
 
   /ckan:
     post:
-      description:
-      summary:
+      description: Fetch CKAN data
+      summary: Periodically fetches CKAN data
       operationId: importCkan
       requestBody:
-        description:
+        description: CKAN import details
         required: true
         content:
           'application/json':
@@ -138,9 +138,15 @@ components:
         frequencyInMinutes:
             description: The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. A frequency higher than the duration (for durations > 0) is not allowed
             type: integer
+        user:
+            description: The user account for hopsworks
+            type: string
+        password:
+            description: The user password for hopsworks
+            type: string
 
     CkanImportRequest:
-      description:
+      description: All data required for importing CKAN data
       type: object
       required:
         - pipeId
@@ -166,10 +172,10 @@ components:
             type: string
             enum: [URL, ID]
         url:
-            describtion: Either the full Ckan API URL using 'package_show' or a resource ID for the API endpoint 'resource_show'
+            description: Either the full Ckan API URL using 'package_show' or a resource ID for the API endpoint 'resource_show'
             type: string
         resourceId:
-            describtion: Resource ID for the API endpoint 'resource_show', only required if fetchType 'ID' is selected
+            description: Resource ID for the API endpoint 'resource_show', only required if fetchType 'ID' is selected
             type: string
         durationInHours:
             description: How long the pipeline should run for, in hours. A value < 1 will make the pipeline run exactly once
@@ -177,6 +183,12 @@ components:
         frequencyInMinutes:
             description: The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. A frequency higher than the duration (for durations > 0) is not allowed
             type: integer
+        user:
+            description: The user account for hopsworks
+            type: string
+        password:
+            description: The user password for hopsworks
+            type: string
 
     CsvUploadRequest:
       description: All data required for uploading and processing CSV data
@@ -196,6 +208,12 @@ components:
         - in: formData
           name: upload
           description: Path to the CSV file to be uploaded
+        - in: formdata
+          name: user
+          description: The user account for hopsworks
+        - in: formdata
+          name: user
+          description: The user password for hopsworks
 
     EventImportRequest:
       description: All data required for importing event data as JSON
@@ -276,6 +294,12 @@ components:
                 retrieved_date:
                   type: string
                   format: 'date-time'
+        user:
+            description: The user account for hopsworks
+            type: string
+        password:
+            description: The user password for hopsworks
+            type: string
 
   examples:
     owmImportExample:
@@ -287,7 +311,9 @@ components:
                "type" : "location",
                "value" : "123456",
                "durationInHours" : 3,
-               "frequencyInMinutes" : 10
+               "frequencyInMinutes" : 10,
+               "user" : "admin@kth.se", # optional
+               "password" : "admin"     # optional
              }
 
     ckanSearchImportExample:
@@ -296,10 +322,12 @@ components:
                "pipeId" : "samplePipe",
                "hopsProjectId" : 123,
                "hopsDataset" : "myDataset",
-               "fetchType" : "URL"
+               "fetchType" : "URL",
                "url" : "https://my-ckan-source.com/api/3/action/package_search?...",
                "durationInHours" : 0,
-               "frequencyInMinutes" : 10
+               "frequencyInMinutes" : 10,
+               "user" : "admin@kth.se", # optional
+               "password" : "admin"     # optional
               }
 
     ckanResourceIdImportExample:
@@ -308,11 +336,13 @@ components:
                "pipeId" : "samplePipe",
                "hopsProjectId" : 123,
                "hopsDataset" : "myDataset",
-               "fetchType" : "ID"
+               "fetchType" : "ID",
                "url" : "https://my-ckan-source.com",
                "resourceId" : "sampleId",
                "durationInHours" : 0,
-               "frequencyInMinutes" : 10
+               "frequencyInMinutes" : 10,
+               "user" : "admin@kth.se", # optional
+               "password" : "admin"     # optional
               }
 
     csvUploadExample:
@@ -357,5 +387,7 @@ components:
                     "score" : 1.0,
                     "retrieved_date" : "2017-12-18T19:47:24.751Z"
                   }
-               ]
+               ],
+               "user" : "admin@kth.se", # optional
+               "password" : "admin"     # optional
              }

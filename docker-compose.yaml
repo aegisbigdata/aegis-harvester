@@ -7,6 +7,8 @@ services:
     networks:
       aegis:
         ipv4_address: 10.5.0.2
+    volumes:
+      - tmp-volume:/tmp
   transformer:
     build: transformer
     ports:
@@ -14,6 +16,8 @@ services:
     networks:
       aegis:
         ipv4_address: 10.5.0.3
+    volumes_from:
+      - importer:rw
   aggregator:
     build: aggregator
     ports:
@@ -21,8 +25,8 @@ services:
     networks:
       aegis:
         ipv4_address: 10.5.0.4
-    volumes:
-      - aggregator-volume:/aggregated
+    volumes_from:
+      - importer:rw
   exporter:
     build: exporter
     ports:
@@ -31,10 +35,10 @@ services:
       aegis:
         ipv4_address: 10.5.0.5
     volumes_from:
-      - aggregator:rw
+      - importer:rw
 
 volumes:
-  aggregator-volume:
+  tmp-volume:
 
 networks:
   aegis:

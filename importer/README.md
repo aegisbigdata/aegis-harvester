@@ -22,7 +22,7 @@ or providing a file upload for CSV data.
 2. Start the application
     - Vanilla: `mvn clean package && java -jar target/importer-fat.jar`
     - Docker
-        1. Start your docker daemon 
+        1. Start your docker daemon
         2. Build the application: `mvn clean package`
         3. Adjust the port number (`EXPOSE` in the `Dockerfile`)
         4. Build the image: `docker build -t aegis/importer .`
@@ -35,7 +35,7 @@ or providing a file upload for CSV data.
 To trigger the fetching of data a `POST` request must be sent to
 
     {url}/owm
-    
+
 containing a JSON body with the data shown in the table below. All values are mandatory.
 
 |Key|Description|
@@ -55,7 +55,7 @@ A frequency higher than the duration (for durations > 0) is not allowed.
 To trigger the fetching of data a `POST` request must be sent to
 
     {url}/ckan
-    
+
 containing a JSON body with the data shown in the table below. All values are mandatory.
 
 |Key|Description|
@@ -69,7 +69,7 @@ containing a JSON body with the data shown in the table below. All values are ma
 
 A frequency higher than the duration (for durations > 0) is not allowed.
 
-### Push CSV 
+### Push CSV
 
 In order to push weather data from another source a `POST` request must be sent to
 
@@ -88,13 +88,13 @@ containing multipart/form-data with key-url pairs containing the data shown in t
 ##### Transform CSV
 
 The supplied CSV file can be transformed in various ways.    
-Each transformation needs to be specified in a mapping script. 
+Each transformation needs to be specified in a mapping script.
 The transformations will be executed in the order they are listed.
-A sample JSON structure for each transformation type is shown below. 
+A sample JSON structure for each transformation type is shown below.
 Numbers indicate the indices of the columns to be transformed.
 
 1. Rename headers
-        
+
         {
             "renameHeaders" : [
                 {   
@@ -103,15 +103,15 @@ Numbers indicate the indices of the columns to be transformed.
                 }
             ]   
         }
-        
+
 2. Convert timestamps
-        
+
         {
             "convertTimestamps" : [ 1, 5, 8 ]   
         }
-        
+
 3. Switch columns
-        
+
         {
             "switchColumns" : [
                 [1, 2],
@@ -119,9 +119,9 @@ Numbers indicate the indices of the columns to be transformed.
             ]
         }
 
-    
+
 4. Merge columns
-    
+
         {
             "mergeColumns" : [
                 [ 1, 2, 3 ],
@@ -146,7 +146,7 @@ An example using curl is shown below:
 To trigger the fetching of data a `POST` request must be sent to
 
     {url}/event
-    
+
 containing a JSON body with the data shown in the table below. All values are mandatory.
 
 |Key|Description|
@@ -160,6 +160,10 @@ A frequency higher than the duration (for durations > 0) is not allowed.
 
 ### Status
 
-A list of currently running pipes can be obtained by sending a `GET` request to 
+A list of currently running pipes can be obtained by sending a `GET` request to
 
     {url}/running
+
+A list of the current component state can be obtained by sending a `GET` request to 
+
+    {url}/state

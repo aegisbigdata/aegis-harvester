@@ -52,9 +52,6 @@ public class CsvTransformationVerticle extends AbstractVerticle {
             DataSendRequest sendRequest =
                     new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), file.getFileName(), headers, content, false, request.getUser(), request.getPassword());
 
-            LOG.debug("user : {}", sendRequest.getUser());
-            LOG.debug("password : {}", sendRequest.getPassword());
-
             vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
         });
     }

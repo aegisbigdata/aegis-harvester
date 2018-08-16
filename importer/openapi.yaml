@@ -139,10 +139,10 @@ components:
             description: The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. A frequency higher than the duration (for durations > 0) is not allowed
             type: integer
         user:
-            description: The user account for hopsworks
+            description: The users account for hopsworks
             type: string
         password:
-            description: The user password for hopsworks
+            description: The users password for hopsworks
             type: string
 
     CkanImportRequest:
@@ -184,10 +184,10 @@ components:
             description: The interval at which data should be fetched, in minutes. A value < 1 will make the pipeline not run. A frequency higher than the duration (for durations > 0) is not allowed
             type: integer
         user:
-            description: The user account for hopsworks
+            description: The users account for hopsworks
             type: string
         password:
-            description: The user password for hopsworks
+            description: The users password for hopsworks
             type: string
 
     CsvUploadRequest:
@@ -210,10 +210,10 @@ components:
           description: Path to the CSV file to be uploaded
         - in: formdata
           name: user
-          description: The user account for hopsworks
+          description: The users account for hopsworks
         - in: formdata
-          name: user
-          description: The user password for hopsworks
+          name: password
+          description: The users password for hopsworks
 
     EventImportRequest:
       description: All data required for importing event data as JSON
@@ -295,10 +295,10 @@ components:
                   type: string
                   format: 'date-time'
         user:
-            description: The user account for hopsworks
+            description: The users account for hopsworks
             type: string
         password:
-            description: The user password for hopsworks
+            description: The users password for hopsworks
             type: string
 
   examples:

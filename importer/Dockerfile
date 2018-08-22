@@ -4,6 +4,7 @@ ENV VERTICLE_FILE importer-fat.jar
 
 # Set the location of the verticles
 ENV VERTICLE_HOME /usr/verticles
+ENV LOG_DIR /log
 
 EXPOSE 8123
 
@@ -15,6 +16,9 @@ COPY conf/config.json $VERTICLE_HOME/
 
 RUN chown -R vertx $VERTICLE_HOME
 RUN chmod -R g+w $VERTICLE_HOME
+
+RUN mkdir $LOG_DIR && chown -R vertx $LOG_DIR && chmod -R g+w $LOG_DIR
+VOLUME $LOG_DIR
 
 USER vertx
 

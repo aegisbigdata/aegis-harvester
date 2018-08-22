@@ -75,7 +75,7 @@ public class MainVerticle extends AbstractVerticle {
             if (handler.succeeded()) {
                 config = handler.result();
                 jobFile = config.getString("tmpDir") + "/" + JOB_FILE_NAME;
-                logFile = config.getString("tmpDir") + "/" + LOG_FILE_NAME;
+                logFile = config.getString("logDir") + "/" + LOG_FILE_NAME;
                 future.complete();
             } else {
                 future.fail("Failed to load config: " + handler.cause());

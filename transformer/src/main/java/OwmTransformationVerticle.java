@@ -96,9 +96,11 @@ public class OwmTransformationVerticle extends AbstractVerticle {
             addEmptyValues(csvValues, 1);
         }
 
+        LOG.debug("owm aggregate {}", request.getAggregate());
+
         String csv = String.join(",", csvValues) + "\n";
         DataSendRequest sendRequest =
-                new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), location, CSV_HEADERS, csv, true, request.getUser(), request.getPassword());
+                new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), location, CSV_HEADERS, csv, request.getAggregate(), request.getUser(), request.getPassword());
 
         vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
     }

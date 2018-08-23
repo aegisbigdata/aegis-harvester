@@ -11,6 +11,10 @@ public class DataSendRequest {
     private String user;
     private String password;
 
+    // entire contents of request are written to file and exported when set to false
+    private Boolean aggregate;
+
+
     public DataSendRequest() {}
 
     public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String payload, String user, String password) {
@@ -22,6 +26,7 @@ public class DataSendRequest {
         this.payload = payload;
         this.user = user;
         this.password = password;
+        this.aggregate = false;
     }
 
     public String getPipeId() {
@@ -72,6 +77,14 @@ public class DataSendRequest {
         this.payload = payload;
     }
 
+    public Boolean getAggregate() {
+        return aggregate;
+    }
+
+    public void setAggregate(Boolean aggregate) {
+        this.aggregate = aggregate;
+    }
+
     public String getUser() {
         return user;
     }
@@ -99,6 +112,7 @@ public class DataSendRequest {
                 ", payload='" + payload + '\'' +
                 ", user='" + user + '\'' +
                 ", password='" + password + '\'' +
+                ", aggregate=" + aggregate +
                 '}';
     }
 }

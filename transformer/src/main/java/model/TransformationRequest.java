@@ -12,6 +12,8 @@ public class TransformationRequest {
     private String user;
     private String password;
 
+    private boolean aggregate;
+
     public String getPipeId() {
         return pipeId;
     }
@@ -60,6 +62,14 @@ public class TransformationRequest {
         this.payload = payload;
     }
 
+    public Boolean getAggregate() {
+        return aggregate;
+    }
+
+    public void setAggregate(Boolean aggregate) {
+        this.aggregate = aggregate;
+    }
+
     public String getUser() {
         return user;
     }
@@ -87,6 +97,7 @@ public class TransformationRequest {
                 ", payload='" + payload + '\'' +
                 ", user='" + user + '\'' +
                 ", password='" + password + '\'' +
+                ", aggregate=" + aggregate +
                 '}';
     }
 }

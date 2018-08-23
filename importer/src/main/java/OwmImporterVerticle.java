@@ -56,7 +56,7 @@ public class OwmImporterVerticle extends AbstractVerticle {
 
         // duration of 0 hours is defined to trigger exactly once
         if (request.getDurationInHours() > 0) {
-            getOwmApiData(owmUrl + params.toString(), request, false);   // periodic timer waits before first request
+            getOwmApiData(owmUrl + params.toString(), request, true);   // periodic timer waits before first request
 
             vertx.setPeriodic(request.getFrequencyInMinutes() * 60000, id -> {
                 if (triggerCounter.get() == totalTicks) {
@@ -65,15 +65,15 @@ public class OwmImporterVerticle extends AbstractVerticle {
                     LOG.debug("Pipe with ID [{}] done", request.getPipeId());
                 } else {
                     triggerCounter.addAndGet(1);
-                    getOwmApiData(owmUrl + params.toString(), request, false);
+                    getOwmApiData(owmUrl + params.toString(), request, true);
                 }
             });
         } else {
-            getOwmApiData(owmUrl + params.toString(), request, true);
+            getOwmApiData(owmUrl + params.toString(), request, false);
         }
     }
 
-    private void getOwmApiData(String owmUrl, OwmFetchRequest request, boolean removeJobFromFile) {
+    private void getOwmApiData(String owmUrl, OwmFetchRequest request, boolean aggregate) {
         LOG.debug("Request URL: {}", owmUrl);
 
         vertx.executeBlocking(future -> {
@@ -94,11 +94,15 @@ public class OwmImporterVerticle extends AbstractVerticle {
                         for (Object obj : body.getJsonArray("list")) {
                             DataSendRequest dataSendRequest =
                                     new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, "owm_weather", (String) obj, request.getUser(), request.getPassword());
+                            if (aggregate)
+                                    dataSendRequest.setAggregate(true);
                             vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                         }
                     } else {
                         DataSendRequest dataSendRequest =
                                 new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), DataType.OWM, "owm_weather", body.toString(), request.getUser(), request.getPassword());
+                        if (aggregate)
+                                dataSendRequest.setAggregate(true);
                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                     }
                     future.complete();
@@ -112,7 +116,7 @@ public class OwmImporterVerticle extends AbstractVerticle {
             if (result.failed())
                 LOG.debug("Importing weather data from URL [{}] failed: {}", owmUrl, result.cause());
 
-            if (removeJobFromFile) {
+            if (!aggregate) {
                 removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
                 LOG.debug("Pipe with ID [{}] done", request.getPipeId());
             }

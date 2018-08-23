@@ -89,6 +89,7 @@ public class CkanImporterVerticle extends AbstractVerticle {
                                         // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
                                         DataSendRequest dataSendRequest =
                                                 new DataSendRequest(request.getPipeId() + fileCount.incrementAndGet(), request.getHopsProjectId(), request.getHopsDataset(), DataType.CSV, baseFileName, payload.toString(), request.getUser(), request.getPassword());
+
                                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                                     } else {
                                         LOG.error("CSV handling failed: {}", csvHandler.cause());
@@ -166,6 +167,8 @@ public class CkanImporterVerticle extends AbstractVerticle {
                 HttpResponse response = httpClient.execute(httpGet);
                 int status = response.getStatusLine().getStatusCode();
                 String body = EntityUtils.toString(response.getEntity());
+
+                // LOG.debug("BODY {}", body);
 
                 if (status < 200 || status > 400) {
                     resultFuture.fail("Ckan API returned status code: " + status);

@@ -400,7 +400,7 @@ public class MainVerticle extends AbstractVerticle {
             } else {
                 payload.forEach(obj -> {
                     DataSendRequest sendRequest
-                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, "event", obj.toString(), user, password);
+                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, "event", obj.toString(), user, password, "{}");
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
@@ -431,7 +431,7 @@ public class MainVerticle extends AbstractVerticle {
 
                     // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
                     DataSendRequest sendRequest
-                            = new DataSendRequest(pipeId + fileCount.incrementAndGet(), hopsProjectId, hopsFolder, DataType.CSV, "local", payload.toString(), user, password);
+                            = new DataSendRequest(pipeId + fileCount.incrementAndGet(), hopsProjectId, hopsFolder, DataType.CSV, "local", payload.toString(), user, password, "{}");
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));

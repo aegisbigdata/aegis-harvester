@@ -114,7 +114,7 @@ public class EventTransformationVerticle extends AbstractVerticle {
         String csv = String.join(",", csvValues) + "\n";
 
         DataSendRequest sendRequest =
-                new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), request.getBaseFileName(), CSV_HEADERS, csv, true, request.getUser(), request.getPassword());
+                new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), request.getBaseFileName(), CSV_HEADERS, csv, true, request.getUser(), request.getPassword(), request.getMetadata());
 
         vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
     }

@@ -112,12 +112,10 @@ public class MainVerticle extends AbstractVerticle {
         Boolean aggregate = message.getBoolean("aggregate");
         String user = message.getString("user");
         String password = message.getString("password");
-
-        LOG.debug("user : {}", context.getBodyAsJson().getString("user"));
-        LOG.debug("password : {}", context.getBodyAsJson().getString("password"));
+        String metadata = message.getString("metadata");
 
         WriteRequest request
-                = new WriteRequest(pipeId, hopsProjectId, hopsDataset, baseFileName, csvHeaders, csvData, aggregate, user, password);
+                = new WriteRequest(pipeId, hopsProjectId, hopsDataset, baseFileName, csvHeaders, csvData, aggregate, user, password, metadata);
         vertx.eventBus().send(Constants.MSG_AGGREGATE, Json.encode(request));
 
         context.response()

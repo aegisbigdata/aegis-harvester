@@ -118,12 +118,15 @@ public class MainVerticle extends AbstractVerticle {
     private void handleExport(RoutingContext context, JsonObject config) {
         LOG.debug("Received request with body {}", context.getBodyAsString());
 
-        String pipeId = context.getBodyAsJson().getString("pipeId");
+        JsonObject message = context.getBodyAsJson();
+        String pipeId = message.getString("pipeId");
+        Integer hopsProjectId = message.getInteger("hopsProjectId");
+        String hopsDataset = "upload/" + message.getString("hopsDataset");
+        String filePath = message.getString("payload");
+        String metadata = message.getString("metadata");
+
         LOG.info("Received request with pipeId [{}]", pipeId);
 
-        Integer hopsProjectId = context.getBodyAsJson().getInteger("hopsProjectId");
-        String hopsDataset = "upload/" + context.getBodyAsJson().getString("hopsDataset");
-        String filePath = context.getBodyAsJson().getString("payload");
         context.response()
                 .setStatusCode(202) // accepted
                 .putHeader("Content-Type", "application/json")
@@ -135,9 +138,9 @@ public class MainVerticle extends AbstractVerticle {
         String email;
         String password;
 
-        if(context.getBodyAsJson().getString("user") != null && context.getBodyAsJson().getString("password") != null) {
-            email = context.getBodyAsJson().getString("user");
-            password = context.getBodyAsJson().getString("password");
+        if(message.getString("user") != null && message.getString("password") != null) {
+            email = message.getString("user");
+            password = message.getString("password");
         } else {
             email = config.getJsonObject("aegis").getString("user");
             password = config.getJsonObject("aegis").getString("password");
@@ -167,72 +170,60 @@ public class MainVerticle extends AbstractVerticle {
             }
         });
 
-        JsonObject metadata = new JsonObject();
-        metadata.put("id", 42);
-        metadata.put("title", "");
-        metadata.put("description", "");
-        metadata.put("publisher", new JsonObject().put("name", "").put("homepage", ""));
-        metadata.put("contact_point", new JsonObject().put("name", "").put("email", ""));
-        metadata.put("keywords", new JsonArray());
-        metadata.put("themes", new JsonArray());
-        metadata.putNull("catalog");
-        //metadata.put("catalog", "");
-        //optional :
-        //metadata.put("uri", "");
-        //metadata.put("name", "");
+        JsonObject metadataJson = new JsonObject(metadata);
 
-        //JsonObject metadata_dist = new JsonObject();
-        //metadata_dist.put("id", 42);
-        //metadata_dist.put("title", "");
-        //metadata_dist.put("description", "");
-        //metadata_dist.put("access_url", "");
-        //metadata_dist.put("format", "");
-        //metadata_dist.put("license", "");
-        //optional :
-        //metadata_dist.put("fields", new JsonArray());
-        //metadata_dist.put("primary_keys", new JsonArray());
-        //metadata_dist.put("uri", "");
-        //metadata_dist.put("name", "");
-        //metadata_dist.put("dataset", "");
+        // upload metadata catalog + dataset + distribution
+        // FIXME : error with "umlauts" when send to meta data store
+        vertx.executeBlocking(future -> {
+            JsonObject response = uploadMetadata(url_metadata + "/catalogs", metadataJson.getJsonObject("catalog"));
 
-        if(metadata != null) {
-          // upload metadata
-          vertx.executeBlocking(future -> {
-              JsonObject response = uploadMetadata(url_metadata + "/datasets", metadata);
+            int status = response.getInteger("status");
+            JsonObject body = response.getJsonObject("body");
 
-              int status = response.getInteger("status");
-              JsonObject body = response.getJsonObject("body");
+            //LOG.debug("STATUS : [{}]", status);
+            //LOG.debug("BODY : [{}]", body);
 
-              LOG.debug("STATUS : [{}]", status);
-              LOG.debug("BODY : [{}]", body);
+            if (status == 400 && body.getString("message") != null && body.getString("message").equals("Entity does already exist")) {
+                // TODO : update, do PUT
+            } else if (status < 200 || status >= 400  ) {
+                future.fail("[Catalog] Metadata Store API returned status code " + status + " and message \"" + body.getString("message") + "\"");
+            }
 
-              if (status < 200 || status >= 400) {
-                  future.fail("Metadata Store API returned status code " + status + " and message \"" + body.getString("message") + "\"");
-              } else {
+            response = uploadMetadata(url_metadata + "/datasets", metadataJson.getJsonObject("dataset"));
 
-                  /*response = uploadMetadata(url_metadata + "/datasets/" + metadata.getInteger("id").toString() + "/distributions", metadata_dist);
+            status = response.getInteger("status");
+            body = response.getJsonObject("body");
 
-                  status = response.getInteger("status");
-                  body = response.getJsonObject("body");
+            //LOG.debug("STATUS : [{}]", status);
+            //LOG.debug("BODY : [{}]", body);
 
-                  LOG.debug("STATUS : [{}]", status);
-                  LOG.debug("BODY : [{}]", body);
+            if (status == 400 && body.getString("message") != null && body.getString("message").equals("Entity does already exist")) {
+                // TODO : update, do PUT
+            } else if (status < 200 || status >= 400) {
+                future.fail("[Dataset] Metadata Store API returned status code " + status + " and message \"" + body.getString("message") + "\"");
+            }
 
-                  if (status < 200 || status >= 400) {
-                      future.fail("Metadata Store API returned status code " + status + " and message \"" + body.getString("message") + "\"");
-                  } else {
-                      future.complete(status);
-                  }*/
+            response = uploadMetadata(url_metadata + "/datasets/" + metadataJson.getJsonObject("dataset").getInteger("id").toString() + "/distributions", metadataJson.getJsonObject("distribution"));
 
-                  future.complete(status);
-              }
-          }, result -> {
-              if(result.succeeded()) {
-                  LOG.info("Uploading Metadata to Metadata Store succeeded");
-              } else {
-                  LOG.error("Uploading Metadata to Metadata Store failed: " + result.cause());
-              }
-          });
-        }
+            status = response.getInteger("status");
+            body = response.getJsonObject("body");
+
+            //LOG.debug("STATUS : [{}]", status);
+            //LOG.debug("BODY : [{}]", body);
+
+            if (status == 400 && body.getString("message") != null && body.getString("message").equals("Entity does already exist")) {
+                // TODO : update, do PUT
+            } else if (status < 200 || status >= 400) {
+                future.fail("[Distribution] Metadata Store API returned status code " + status + " and message \"" + body.getString("message") + "\"");
+            } else {
+                future.complete();
+            }
+        }, result -> {
+            if(result.succeeded()) {
+                LOG.info("Uploading Metadata to Metadata Store succeeded");
+            } else {
+                LOG.error("Uploading Metadata to Metadata Store failed: " + result.cause());
+            }
+        });
     }
 }

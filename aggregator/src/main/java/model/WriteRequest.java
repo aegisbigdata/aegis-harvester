@@ -12,13 +12,15 @@ public class WriteRequest {
     private String user;
     private String password;
 
+    private String metadata;
+
     // entire contents of request are written to file and exported when set to false
     private Boolean aggregate;
 
     public WriteRequest() {
     }
 
-    public WriteRequest(String pipeId, Integer hopsProjectId, String hopsDataset, String baseFileName, String csvHeaders, String csvData, Boolean aggregate, String user, String password) {
+    public WriteRequest(String pipeId, Integer hopsProjectId, String hopsDataset, String baseFileName, String csvHeaders, String csvData, Boolean aggregate, String user, String password, String metadata) {
         this.pipeId = pipeId;
         this.hopsProjectId = hopsProjectId;
         this.hopsDataset = hopsDataset;
@@ -28,6 +30,7 @@ public class WriteRequest {
         this.aggregate = aggregate;
         this.user = user;
         this.password = password;
+        this.metadata = metadata;
     }
 
     public String getPipeId() {
@@ -102,6 +105,14 @@ public class WriteRequest {
         this.password = password;
     }
 
+    public String getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(String metadata) {
+        this.metadata = metadata;
+    }
+
     @Override
     public String toString() {
         return "WriteRequest{" +
@@ -113,7 +124,8 @@ public class WriteRequest {
                 ", csvData='" + csvData + '\'' +
                 ", user='" + user + '\'' +
                 ", password='" + password + '\'' +
-                ", aggregate=" + aggregate +
+                ", aggregate=" + aggregate + '\'' +
+                ", metadata=" + metadata +
                 '}';
     }
 }

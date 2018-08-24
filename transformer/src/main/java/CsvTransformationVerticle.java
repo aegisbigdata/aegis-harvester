@@ -50,7 +50,7 @@ public class CsvTransformationVerticle extends AbstractVerticle {
             String content = String.join("\n", file.getContent());
 
             DataSendRequest sendRequest =
-                    new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), file.getFileName(), headers, content, false, request.getUser(), request.getPassword());
+                    new DataSendRequest(request.getPipeId(), request.getHopsProjectId(), request.getHopsDataset(), file.getFileName(), headers, content, false, request.getUser(), request.getPassword(), request.getMetadata());
 
             vertx.eventBus().send(Constants.MSG_SEND, Json.encode(sendRequest));
         });

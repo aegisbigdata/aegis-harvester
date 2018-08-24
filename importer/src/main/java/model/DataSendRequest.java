@@ -8,16 +8,18 @@ public class DataSendRequest {
     private DataType dataType;
     private String baseFileName;
     private String payload;
+
     private String user;
     private String password;
+    
+    private String metadata;
 
     // entire contents of request are written to file and exported when set to false
     private Boolean aggregate;
 
-
     public DataSendRequest() {}
 
-    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String payload, String user, String password) {
+    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String payload, String user, String password, String metadata) {
         this.pipeId = pipeId;
         this.hopsProjectId = hopsProjectId;
         this.hopsDataset = hopsDataset;
@@ -27,6 +29,7 @@ public class DataSendRequest {
         this.user = user;
         this.password = password;
         this.aggregate = false;
+        this.metadata = metadata;
     }
 
     public String getPipeId() {
@@ -101,6 +104,14 @@ public class DataSendRequest {
         this.password = password;
     }
 
+    public String getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(String metadata) {
+        this.metadata = metadata;
+    }
+
     @Override
     public String toString() {
         return "DataSendRequest{" +
@@ -112,7 +123,8 @@ public class DataSendRequest {
                 ", payload='" + payload + '\'' +
                 ", user='" + user + '\'' +
                 ", password='" + password + '\'' +
-                ", aggregate=" + aggregate +
+                ", aggregate=" + aggregate + '\'' +
+                ", metadata=" + metadata +
                 '}';
     }
 }

@@ -118,6 +118,7 @@ public class AggregationVerticle extends AbstractVerticle {
         message.put("payload", fileNames.get(request.getPipeId()));
         message.put("user", request.getUser());
         message.put("password", request.getPassword());
+        message.put("metadata", request.getMetadata());
 
         Integer port = config().getInteger("target.port");
         String host = config().getString("target.host");

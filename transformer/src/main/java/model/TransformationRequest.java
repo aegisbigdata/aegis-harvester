@@ -12,6 +12,8 @@ public class TransformationRequest {
     private String user;
     private String password;
 
+    private String metadata;
+
     private boolean aggregate;
 
     public String getPipeId() {
@@ -86,6 +88,14 @@ public class TransformationRequest {
         this.password = password;
     }
 
+    public String getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(String metadata) {
+        this.metadata = metadata;
+    }
+
     @Override
     public String toString() {
         return "TransformationRequest{" +
@@ -97,7 +107,8 @@ public class TransformationRequest {
                 ", payload='" + payload + '\'' +
                 ", user='" + user + '\'' +
                 ", password='" + password + '\'' +
-                ", aggregate=" + aggregate +
+                ", aggregate=" + aggregate + '\'' +
+                ", metadata=" + metadata +
                 '}';
     }
 }

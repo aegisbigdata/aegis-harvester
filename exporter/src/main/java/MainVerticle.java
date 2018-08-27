@@ -15,6 +15,8 @@ import java.nio.file.Paths;
 
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
@@ -23,6 +25,8 @@ import org.apache.http.entity.StringEntity;
 import java.net.URI;
 
 import java.io.IOException;
+
+import java.util.Iterator;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -88,31 +92,91 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private JsonObject uploadMetadata(String url, JsonObject metadata) {
-        JsonObject jsonResponse = new JsonObject();
+    private boolean uploadMetadata(String filePath, String url, Integer hopsProjectId, String hopsDataset, String email, String password, String url_metadata, String metadata) {
 
-        HttpClient httpClient = HttpClients.createDefault();
-        HttpPost httpPost = new HttpPost(url);
+        boolean success = true;
 
+        Integer hopsFileId = 0;
+        Integer hopsDatasetId = 0;
+
+        // get hopsFileId and hopsDatasetId
         try {
-            StringEntity entity = new StringEntity(metadata.toString());
+            HttpClient httpClient = HttpClients.createDefault();
+
+            LOG.debug("Issue POST Request to [{}]", url + "/auth/login");
+            HttpPost httpPost = new HttpPost(url + "/auth/login");
+
+            StringEntity entity = new StringEntity("email=" + email + "&password=" + password + "&otp=");
 
             httpPost.setEntity(entity);
             httpPost.setHeader("Accept", "application/json");
-            httpPost.setHeader("Content-type", "application/json");
+            httpPost.setHeader("Content-type", "application/x-www-form-urlencoded");
 
             HttpResponse response = httpClient.execute(httpPost);
-            JsonObject body = new JsonObject(EntityUtils.toString(response.getEntity()));
+            String body = EntityUtils.toString(response.getEntity());
             int status = response.getStatusLine().getStatusCode();
 
-            jsonResponse.put("status", status);
-            jsonResponse.put("body", body);
+            LOG.debug("Issue GET Request to [{}]", url + "/project/" + hopsProjectId.toString() + "/dataset/getContent/" + hopsDataset);
+            HttpGet httpGet = new HttpGet(url + "/project/" + hopsProjectId + "/dataset/getContent/" + hopsDataset);
+
+            response = httpClient.execute(httpGet);
+            body = EntityUtils.toString(response.getEntity());
+            status = response.getStatusLine().getStatusCode();
+
+            if(status < 200 || status >= 400) {
+                success = false;
+            } else {
+                for(Iterator<Object> it = new JsonArray(body).iterator(); it.hasNext();) {
+                    JsonObject element = new JsonObject(it.next().toString());
+
+                    if(filePath.contains(element.getString("name"))) {
+                        hopsFileId = element.getInteger("id");
+                        hopsDatasetId = element.getInteger("parentId");
+                    }
+                }
+            }
         } catch (IOException e) {
-            jsonResponse.put("status", -1);
-            jsonResponse.put("body", "{\"status\":\"error\",\"message\":\"e.getMessage()\"}");
+            success = false;
+            LOG.error("IOException [{}]", e.getMessage());
         }
 
-        return jsonResponse;
+        //LOG.debug("hopsFileId [{}]", hopsFileId);
+        //LOG.debug("hopsDatasetId [{}]", hopsDatasetId);
+
+        // upload metadata
+        if(hopsFileId > 0 && hopsDatasetId > 0) {
+            try {
+                HttpClient httpClient = HttpClients.createDefault();
+
+                LOG.debug("Issue POST Request to [{}]", url_metadata + "/datasets/" + hopsDatasetId + "/distributions");
+                HttpPost httpPost = new HttpPost(url_metadata + "/datasets/" + hopsDatasetId + "/distributions");
+
+                JsonObject metadataJson = new JsonObject(metadata);
+                metadataJson.put("id", hopsFileId);
+
+                StringEntity entity = new StringEntity(metadataJson.toString());
+
+                httpPost.setEntity(entity);
+                httpPost.setHeader("Accept", "application/json");
+                httpPost.setHeader("Content-type", "application/json");
+
+                HttpResponse response = httpClient.execute(httpPost);
+                String body = EntityUtils.toString(response.getEntity());
+                int status = response.getStatusLine().getStatusCode();
+
+                //LOG.debug("POST BODY {}", body);
+                //LOG.debug("POST STATUS {}", status);
+
+                if(status < 200 || status >= 400) {
+                    success = false;
+                }
+            } catch (IOException e) {
+                success = false;
+                LOG.error("IOException [{}]", e.getMessage());
+            }
+        }
+
+        return success;
     }
 
     private void handleExport(RoutingContext context, JsonObject config) {
@@ -121,7 +185,7 @@ public class MainVerticle extends AbstractVerticle {
         JsonObject message = context.getBodyAsJson();
         String pipeId = message.getString("pipeId");
         Integer hopsProjectId = message.getInteger("hopsProjectId");
-        String hopsDataset = "upload/" + message.getString("hopsDataset");
+        String hopsDataset = message.getString("hopsDataset");
         String filePath = message.getString("payload");
         String metadata = message.getString("metadata");
 
@@ -151,7 +215,7 @@ public class MainVerticle extends AbstractVerticle {
             if (Files.exists(Paths.get(filePath))) {
 
                 HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email, password, url);
-                hopsworksAdapter.actionUploadFile(hopsProjectId.toString(), hopsDataset, filePath);
+                hopsworksAdapter.actionUploadFile(hopsProjectId.toString(), "upload/" + hopsDataset, filePath);
 
                 LOG.info("Uploaded file [{}] to hopsworks with pipeId [{}]", filePath, pipeId);
 
@@ -160,7 +224,17 @@ public class MainVerticle extends AbstractVerticle {
                                 LOG.warn("Failed to clean up file [{}] : ", filePath, deleteHandler.cause());
                         });
 
-                future.complete();
+                if(!metadata.equals("{}")) {
+                    boolean success = uploadMetadata(filePath, url, hopsProjectId, hopsDataset, email, password, url_metadata, metadata);
+                    if(success) {
+                        LOG.debug("Successfully uploaded metadata");
+                        future.complete();
+                    } else {
+                        future.fail("Error when uploading metadata");
+                    }
+                } else {
+                    future.complete();
+                }
             } else {
                 future.fail("File not found: " + filePath);
             }
@@ -170,60 +244,5 @@ public class MainVerticle extends AbstractVerticle {
             }
         });
 
-        JsonObject metadataJson = new JsonObject(metadata);
-
-        // upload metadata catalog + dataset + distribution
-        // FIXME : error with "umlauts" when send to meta data store
-        vertx.executeBlocking(future -> {
-            JsonObject response = uploadMetadata(url_metadata + "/catalogs", metadataJson.getJsonObject("catalog"));
-
-            int status = response.getInteger("status");
-            JsonObject body = response.getJsonObject("body");
-
-            //LOG.debug("STATUS : [{}]", status);
-            //LOG.debug("BODY : [{}]", body);
-
-            if (status == 400 && body.getString("message") != null && body.getString("message").equals("Entity does already exist")) {
-                // TODO : update, do PUT
-            } else if (status < 200 || status >= 400  ) {
-                future.fail("[Catalog] Metadata Store API returned status code " + status + " and message \"" + body.getString("message") + "\"");
-            }
-
-            response = uploadMetadata(url_metadata + "/datasets", metadataJson.getJsonObject("dataset"));
-
-            status = response.getInteger("status");
-            body = response.getJsonObject("body");
-
-            //LOG.debug("STATUS : [{}]", status);
-            //LOG.debug("BODY : [{}]", body);
-
-            if (status == 400 && body.getString("message") != null && body.getString("message").equals("Entity does already exist")) {
-                // TODO : update, do PUT
-            } else if (status < 200 || status >= 400) {
-                future.fail("[Dataset] Metadata Store API returned status code " + status + " and message \"" + body.getString("message") + "\"");
-            }
-
-            response = uploadMetadata(url_metadata + "/datasets/" + metadataJson.getJsonObject("dataset").getInteger("id").toString() + "/distributions", metadataJson.getJsonObject("distribution"));
-
-            status = response.getInteger("status");
-            body = response.getJsonObject("body");
-
-            //LOG.debug("STATUS : [{}]", status);
-            //LOG.debug("BODY : [{}]", body);
-
-            if (status == 400 && body.getString("message") != null && body.getString("message").equals("Entity does already exist")) {
-                // TODO : update, do PUT
-            } else if (status < 200 || status >= 400) {
-                future.fail("[Distribution] Metadata Store API returned status code " + status + " and message \"" + body.getString("message") + "\"");
-            } else {
-                future.complete();
-            }
-        }, result -> {
-            if(result.succeeded()) {
-                LOG.info("Uploading Metadata to Metadata Store succeeded");
-            } else {
-                LOG.error("Uploading Metadata to Metadata Store failed: " + result.cause());
-            }
-        });
     }
 }

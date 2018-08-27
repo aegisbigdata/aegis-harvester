@@ -98,7 +98,7 @@ public class CkanImporterVerticle extends AbstractVerticle {
                                                       payload.toString(),
                                                       request.getUser(),
                                                       request.getPassword(),
-                                                      "{}"
+                                                      createCkanMetadata(resource)
                                                 );
 
                                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
@@ -138,32 +138,23 @@ public class CkanImporterVerticle extends AbstractVerticle {
 
                             getCsvFileFromUrl(resourceUrl.replaceAll(" ", "%20"), baseFileName).setHandler(csvHandler -> {
                                 if (csvHandler.succeeded()) {
-                                    String ckanPackageUrl = request.getUrl() + "/api/3/action/package_show?id=" + resource.getJsonObject("result").getString("package_id");
-                                    issueHttpRequest(ckanPackageUrl).setHandler(ckanPackageHandler -> {
-                                        if (ckanPackageHandler.succeeded()) {
-                                            String metadata = createCkanMetadata(new JsonObject(ckanPackageHandler.result()).getJsonObject("result"), resource.getJsonObject("result"));
+                                    JsonObject payload = new JsonObject().put("csv", csvHandler.result());
 
-                                            JsonObject payload = new JsonObject().put("csv", csvHandler.result());
+                                    // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
+                                    DataSendRequest dataSendRequest =
+                                            new DataSendRequest(
+                                                    request.getPipeId(),
+                                                    request.getHopsProjectId(),
+                                                    request.getHopsDataset(),
+                                                    DataType.CSV,
+                                                    baseFileName,
+                                                    payload.toString(),
+                                                    request.getUser(),
+                                                    request.getPassword(),
+                                                    createCkanMetadata(resource.getJsonObject("result"))
+                                            );
 
-                                            // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
-                                            DataSendRequest dataSendRequest =
-                                                    new DataSendRequest(
-                                                            request.getPipeId(),
-                                                            request.getHopsProjectId(),
-                                                            request.getHopsDataset(),
-                                                            DataType.CSV,
-                                                            baseFileName,
-                                                            payload.toString(),
-                                                            request.getUser(),
-                                                            request.getPassword(),
-                                                            metadata
-                                                    );
-
-                                            vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
-                                        } else {
-                                            LOG.error("CKANPackage import failed: {}", ckanPackageHandler.cause());
-                                        }
-                                    });
+                                    vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                                 } else {
                                     LOG.error("CSV handling failed: {}", csvHandler.cause());
                                 }
@@ -262,50 +253,37 @@ public class CkanImporterVerticle extends AbstractVerticle {
         });
     }
 
-    private String createCkanMetadata(JsonObject packageJson, JsonObject resourceJson) {
-
-        JsonObject catalog = new JsonObject();
-        catalog.put("id", 42);
-        catalog.put("name", catalog.getInteger("id").toString());
-        catalog.put("title", packageJson.getJsonObject("organization").getString("title"));
-        catalog.put("description", packageJson.getJsonObject("organization").getString("description"));
-        catalog.put("publisher", new JsonObject().put("name", "").put("homepage", ""));
-
-        JsonObject dataset = new JsonObject();
-        dataset.put("id", 42);
-        dataset.put("title", packageJson.getString("title"));
-        dataset.put("description", resourceJson.getString("id"));
-        dataset.put("publisher", new JsonObject().put("name", "").put("homepage", ""));
-        dataset.put("contact_point", new JsonObject().put("name", "").put("email", ""));
-        dataset.put("keywords", new JsonArray());
-        dataset.put("themes", new JsonArray());
-        //dataset.putNull("catalog");
-        dataset.put("catalog", catalog.getString("name"));
-        //optional :
-        //dataset.put("uri", "");
-        //dataset.put("name", "");
-
-        JsonObject distribution = new JsonObject();
-        distribution.put("id", resourceJson.getInteger("position"));
-        distribution.put("title", resourceJson.getString("id"));
-        distribution.put("description", resourceJson.getString("description"));
-        distribution.put("access_url", resourceJson.getString("url"));
-        distribution.put("format",  resourceJson.getString("format"));
-        distribution.put("license", resourceJson.getJsonObject("license").getString("resource"));
-        //optional :
-        //distribution.put("fields", new JsonArray());
-        //distribution.put("primary_keys", new JsonArray());
-        //distribution.put("uri", "");
-        //distribution.put("name", metadataJson.getString("name"));
-        //distribution.put("dataset", "");
-
+    private String createCkanMetadata(JsonObject resourceJson) {
         JsonObject metadata = new JsonObject();
-        metadata.put("catalog", catalog);
-        metadata.put("dataset", dataset);
-        metadata.put("distribution", distribution);
 
-        //LOG.debug("metadata: [{}]", metadata.encodePrettily());
+        metadata.put("title", replaceUmlauts(resourceJson.getString("name")));
+        metadata.put("description", replaceUmlauts(resourceJson.getString("description")));
+        metadata.put("access_url", resourceJson.getString("url"));
+        metadata.put("format",  resourceJson.getString("format"));
+
+        if(resourceJson.getJsonObject("license") == null) {
+            metadata.put("license", "");
+        } else {
+            metadata.put("license", resourceJson.getJsonObject("license").getString("resource"));
+        }
+
+        LOG.debug("metadata [{}]", metadata);
 
         return metadata.toString();
+    }
+
+    private static String replaceUmlauts(String input) {
+
+        return input
+                .replaceAll("ü", "ue")
+                .replaceAll("ö", "oe")
+                .replaceAll("ä", "ae")
+                .replaceAll("ß", "ss")
+                .replaceAll("Ü(?=[a-zäöüß ])", "Ue")
+                .replaceAll("Ö(?=[a-zäöüß ])", "Oe")
+                .replaceAll("Ä(?=[a-zäöüß ])", "Ae")
+                .replaceAll("Ü", "UE")
+                .replaceAll("Ö", "OE")
+                .replaceAll("Ä", "AE");
     }
 }

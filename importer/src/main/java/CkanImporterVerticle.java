@@ -256,18 +256,35 @@ public class CkanImporterVerticle extends AbstractVerticle {
     private String createCkanMetadata(JsonObject resourceJson) {
         JsonObject metadata = new JsonObject();
 
-        metadata.put("title", replaceUmlauts(resourceJson.getString("name")));
-        metadata.put("description", replaceUmlauts(resourceJson.getString("description")));
-        metadata.put("access_url", resourceJson.getString("url"));
-        metadata.put("format",  resourceJson.getString("format"));
+        if(resourceJson.getString("name") == null) {
+            metadata.put("title", "");
+        } else {
+            metadata.put("title", replaceUmlauts(resourceJson.getString("name")));
+        }
+
+        if(resourceJson.getString("description") == null) {
+            metadata.put("description", "");
+        } else {
+            metadata.put("description", replaceUmlauts(resourceJson.getString("description")));
+        }
+
+        if(resourceJson.getString("url") == null) {
+            metadata.put("url", "");
+        } else {
+            metadata.put("access_url", resourceJson.getString("url"));
+        }
+
+        if(resourceJson.getString("format") == null) {
+            metadata.put("format", "");
+        } else {
+            metadata.put("format",  resourceJson.getString("format"));
+        }
 
         if(resourceJson.getJsonObject("license") == null) {
             metadata.put("license", "");
         } else {
             metadata.put("license", resourceJson.getJsonObject("license").getString("resource"));
         }
-
-        LOG.debug("metadata [{}]", metadata);
 
         return metadata.toString();
     }

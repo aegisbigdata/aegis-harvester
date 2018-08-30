@@ -21,6 +21,12 @@ import java.net.URL;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.TimeUnit;
+
 public class CkanImporterVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(CkanImporterVerticle.class);
@@ -75,22 +81,48 @@ public class CkanImporterVerticle extends AbstractVerticle {
             if (ckanHandler.succeeded()) {
                 try {
                     AtomicInteger fileCount = new AtomicInteger(0);
+                    Integer countCSV = 0;
                     for (Object resultObj : new JsonObject(ckanHandler.result()).getJsonObject("result").getJsonArray("results")) {
+
+                        boolean containsCSV = false;
+
                         for (Object resourceObj : (((JsonObject) resultObj).getJsonArray("resources"))) {
                             JsonObject resource = (JsonObject) resourceObj;
+
                             String url = resource.getString("url");
+                            String format = resource.getString("format");
 
+                            //if (url != null && (format != null && format.equals("CSV") || url.endsWith(".csv"))) {
                             if (url != null && url.endsWith(".csv")) {
-                                String baseFileName = url.substring(url.lastIndexOf("/"), url.lastIndexOf("."));
 
-                                getCsvFileFromUrl(url.replaceAll(" ", "%20"), baseFileName).setHandler(csvHandler -> {
+                                containsCSV = true;
+
+                                String baseFileName;
+
+                                if(url.endsWith(".csv")) {
+                                    baseFileName = url.substring(url.lastIndexOf("/"), url.lastIndexOf("."));
+                                } else {
+                                    LOG.debug("found csv file without csv ending");
+                                    baseFileName = url.substring(url.lastIndexOf("/"), url.length()-1);
+                                }
+
+                                LOG.debug("baseFileName : [{}]", baseFileName);
+
+                                String pId = request.getPipeId() + fileCount.incrementAndGet();
+
+                                LOG.debug("url : [{}]", url);
+                                LOG.debug("pipeId : [{}]", pId);
+
+                                /*getCsvFileFromUrl(url.replaceAll(" ", "%20"), baseFileName).setHandler(csvHandler -> {
                                     if (csvHandler.succeeded()) {
                                         JsonObject payload = new JsonObject().put("csv", csvHandler.result());
+
+                                        LOG.debug("pipeId : [{}]", pId);
 
                                         // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
                                         DataSendRequest dataSendRequest =
                                                 new DataSendRequest(
-                                                      request.getPipeId() + fileCount.incrementAndGet(),
+                                                      pId,
                                                       request.getHopsProjectId(),
                                                       request.getHopsDataset(),
                                                       DataType.CSV,
@@ -98,17 +130,40 @@ public class CkanImporterVerticle extends AbstractVerticle {
                                                       payload.toString(),
                                                       request.getUser(),
                                                       request.getPassword(),
-                                                      createCkanMetadata(resource)
+                                                      createMetadata((JsonObject) resultObj, resource)
                                                 );
 
                                         vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
                                     } else {
                                         LOG.error("CSV handling failed: {}", csvHandler.cause());
                                     }
-                                });
+                                });*/
+
+                                // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
+                                CSVDownloadRequest csvDownloadRequest =
+                                        new CSVDownloadRequest(
+                                              pId,
+                                              request.getHopsProjectId(),
+                                              request.getHopsDataset(),
+                                              DataType.CSV,
+                                              baseFileName,
+                                              null,
+                                              request.getUser(),
+                                              request.getPassword(),
+                                              createMetadata((JsonObject) resultObj, resource)
+                                        );
+
+                                csvDownloadRequest.setUrl(url);
+
+                                vertx.eventBus().send(Constants.MSG_DOWNLOAD_CSV, Json.encode(csvDownloadRequest));
                             }
                         }
+
+                        if(containsCSV) {
+                            countCSV++;
+                        }
                     }
+                    LOG.debug("Found [{}] datasets with CSV", countCSV);
                 } catch (Exception e) {
                     LOG.error("Exception thrown: {}", e.getMessage());
                 }
@@ -151,7 +206,7 @@ public class CkanImporterVerticle extends AbstractVerticle {
                                                     payload.toString(),
                                                     request.getUser(),
                                                     request.getPassword(),
-                                                    createCkanMetadata(resource.getJsonObject("result"))
+                                                    createMetadata(null, resource.getJsonObject("result"))
                                             );
 
                                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
@@ -210,12 +265,32 @@ public class CkanImporterVerticle extends AbstractVerticle {
         LOG.debug("Downloading file from [{}]", url);
 
         vertx.executeBlocking(httpFuture -> {
+            File csvFile = new File(config().getString("tmpDir") + fileName);
+
+            /*ExecutorService executorService = Executors.newFixedThreadPool(1);
+            java.util.concurrent.Future<?> task = executorService.submit(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        FileUtils.copyURLToFile(new URL(url), csvFile, 10000, 10000);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });*/
+
             try {
-                File csvFile = new File(config().getString("tmpDir") + fileName);
                 FileUtils.copyURLToFile(new URL(url), csvFile, 10000, 10000);
+                //task.get(120, TimeUnit.SECONDS);
                 String csvContent = FileUtils.readFileToString(csvFile, "UTF-8");
+                FileUtils.deleteQuietly(csvFile);
                 resultFuture.complete(csvContent);
-            } catch (IOException e) {
+            } /*catch (InterruptedException | ExecutionException e) {
+                resultFuture.fail("Failed to download file: " + e.getMessage());
+            } catch (TimeoutException e) {
+                task.cancel(true);
+                resultFuture.fail("Failed to download file: " + e.getMessage());
+            } */catch (IOException e) {
                 resultFuture.fail("Failed to download file: " + e.getMessage());
             }
         }, result -> {});
@@ -253,38 +328,71 @@ public class CkanImporterVerticle extends AbstractVerticle {
         });
     }
 
-    private String createCkanMetadata(JsonObject resourceJson) {
+    private String createMetadata(JsonObject packageJson, JsonObject resourceJson) {
         JsonObject metadata = new JsonObject();
 
+        JsonObject dataset = new JsonObject();
+
+        if(packageJson != null) {
+
+            if(packageJson.getString("title") == null) {
+                dataset.put("title", "");
+            } else {
+                dataset.put("title", replaceUmlauts(packageJson.getString("title")));
+            }
+
+            if(packageJson.getString("notes") == null) {
+                dataset.put("description", "");
+            } else {
+                dataset.put("description", replaceUmlauts(packageJson.getString("notes")));
+            }
+
+            dataset.put("publisher", new JsonObject().put("name", "").put("homepage", ""));
+            dataset.put("contact_point", new JsonObject().put("name", "").put("email", ""));
+            dataset.put("keywords", new JsonArray());
+            dataset.put("themes", new JsonArray());
+            dataset.putNull("catalog");
+        }
+
+        metadata.put("dataset", dataset);
+
+        JsonObject distribution = new JsonObject();
+
         if(resourceJson.getString("name") == null) {
-            metadata.put("title", "");
+            distribution.put("title", "");
         } else {
-            metadata.put("title", replaceUmlauts(resourceJson.getString("name")));
+            distribution.put("title", replaceUmlauts(resourceJson.getString("name")));
         }
 
         if(resourceJson.getString("description") == null) {
-            metadata.put("description", "");
+            distribution.put("description", "");
         } else {
-            metadata.put("description", replaceUmlauts(resourceJson.getString("description")));
+            distribution.put("description", replaceUmlauts(resourceJson.getString("description")));
         }
 
         if(resourceJson.getString("url") == null) {
-            metadata.put("url", "");
+            distribution.put("url", "");
         } else {
-            metadata.put("access_url", resourceJson.getString("url"));
+            distribution.put("access_url", resourceJson.getString("url").replaceAll(" ", ""));
         }
 
         if(resourceJson.getString("format") == null) {
-            metadata.put("format", "");
+            distribution.put("format", "");
         } else {
-            metadata.put("format",  resourceJson.getString("format"));
+            distribution.put("format",  resourceJson.getString("format"));
         }
 
         if(resourceJson.getJsonObject("license") == null) {
-            metadata.put("license", "");
+            distribution.put("license", "");
         } else {
-            metadata.put("license", resourceJson.getJsonObject("license").getString("resource"));
+            distribution.put("license", resourceJson.getJsonObject("license").getString("resource"));
+
+            if(distribution.getString("license") == null) {
+                distribution.put("license", resourceJson.getJsonObject("license").getString("label"));
+            }
         }
+
+        metadata.put("distribution", distribution);
 
         return metadata.toString();
     }

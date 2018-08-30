@@ -11,7 +11,7 @@ public class DataSendRequest {
 
     private String user;
     private String password;
-    
+
     private String metadata;
 
     // entire contents of request are written to file and exported when set to false

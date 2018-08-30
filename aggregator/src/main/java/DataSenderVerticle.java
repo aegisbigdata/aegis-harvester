@@ -3,9 +3,8 @@ import io.vertx.core.Future;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
-import io.vertx.core.json.JsonObject;
 import model.Constants;
-import model.DataSendRequest;
+import model.WriteRequest;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -34,22 +33,6 @@ public class DataSenderVerticle extends AbstractVerticle {
 
 
     private Future<Void> sendData(Message<String> message) {
-        DataSendRequest request = Json.decodeValue(message.body(), DataSendRequest.class);
-
-        JsonObject json = new JsonObject();
-        json.put("pipeId", request.getPipeId());
-        json.put("hopsProjectId", request.getHopsProjectId());
-        json.put("hopsDataset", request.getHopsDataset());
-        json.put("baseFileName", request.getBaseFileName() != null
-                ? request.getBaseFileName().replaceAll("[^a-zA-Z0-9_]+","") // remove special chars for use as file name
-                : "");
-        json.put("csvHeaders", request.getCsvHeaders());
-        json.put("payload", request.getCsvPayload());
-        json.put("aggregate", request.getAggregate());
-        json.put("user", request.getUser());
-        json.put("password", request.getPassword());
-        json.put("metadata", request.getMetadata());
-
         Future<Void> future = Future.future();
 
         try {
@@ -66,7 +49,7 @@ public class DataSenderVerticle extends AbstractVerticle {
                     HttpPost postRequest = new HttpPost(url);
                     postRequest.setHeader("Content-Type", "application/json");
 
-                    HttpEntity entity = new ByteArrayEntity(json.toString().getBytes(StandardCharsets.UTF_8));
+                    HttpEntity entity = new ByteArrayEntity(message.body().getBytes(StandardCharsets.UTF_8));
                     postRequest.setEntity(entity);
 
                     HttpResponse response = httpClient.execute(postRequest);

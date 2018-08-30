@@ -23,7 +23,7 @@ public class MainVerticle extends AbstractVerticle {
         LOG.info("Launching aggregator...");
 
         Future<Void> steps = loadConfig()
-                .compose(handler -> bootstrapVerticle())
+                .compose(handler -> bootstrapVerticles())
                 .compose(handler -> startServer());
 
         steps.setHandler(handler -> {
@@ -54,7 +54,7 @@ public class MainVerticle extends AbstractVerticle {
         return future;
     }
 
-    private Future<Void> bootstrapVerticle() {
+    private Future<Void> bootstrapVerticles() {
         LOG.info("Deploying aggregation verticle...");
 
         Future<Void> future = Future.future();
@@ -66,11 +66,20 @@ public class MainVerticle extends AbstractVerticle {
         vertx.deployVerticle(AggregationVerticle.class.getName(), options, handler -> {
             if (handler.succeeded()) {
                 LOG.info("Aggregation verticle successfully deployed");
-                future.complete();
             } else {
                 future.fail("Failed to deploy aggregation verticle: " + handler.cause());
             }
         });
+
+        vertx.deployVerticle(DataSenderVerticle.class.getName(), options, handler -> {
+            if (handler.succeeded()) {
+                LOG.info("Datasender verticle successfully deployed");
+            } else {
+                future.fail("Failed to deploy Datasender verticle: " + handler.cause());
+            }
+        });
+
+        future.complete();
 
         return future;
     }

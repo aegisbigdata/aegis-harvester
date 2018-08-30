@@ -120,7 +120,9 @@ public class AggregationVerticle extends AbstractVerticle {
         message.put("password", request.getPassword());
         message.put("metadata", request.getMetadata());
 
-        Integer port = config().getInteger("target.port");
+        vertx.eventBus().send(Constants.MSG_SEND, Json.encode(message));
+
+        /*Integer port = config().getInteger("target.port");
         String host = config().getString("target.host");
         String requestURI = config().getString("target.endpoint");
 
@@ -137,6 +139,6 @@ public class AggregationVerticle extends AbstractVerticle {
                     } else {
                         LOG.warn("POST to [{}] on port [{}] failed: {}", host + requestURI, port, postResult.cause());
                     }
-                });
+                });*/
     }
 }

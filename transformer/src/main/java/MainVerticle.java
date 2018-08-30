@@ -122,6 +122,8 @@ public class MainVerticle extends AbstractVerticle {
             TransformationRequest request = Json.decodeValue(context.getBodyAsString(), TransformationRequest.class);
             HttpServerResponse response = context.response();
 
+            LOG.debug("PIPEID : [{}]", request.getPipeId());
+
             switch (request.getDataType()) {
                 case OWM:
                     LOG.info("Received request: OWM");

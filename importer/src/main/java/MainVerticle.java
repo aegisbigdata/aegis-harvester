@@ -91,10 +91,18 @@ public class MainVerticle extends AbstractVerticle {
                 .setConfig(config)
                 .setWorker(true);
 
+        LOG.debug("pool size [{}]", options.getWorkerPoolSize());
+
         List<Future> deploymentFutures = new ArrayList<>();
         deploymentFutures.add(startVerticle(options, OwmImporterVerticle.class.getName()));
         deploymentFutures.add(startVerticle(options, CkanImporterVerticle.class.getName()));
         deploymentFutures.add(startVerticle(options, DataSenderVerticle.class.getName()));
+
+        deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
+        deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
+        deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
+        deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
+        deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
 
         return CompositeFuture.join(deploymentFutures);
     }

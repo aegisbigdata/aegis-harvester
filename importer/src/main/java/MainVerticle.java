@@ -91,17 +91,10 @@ public class MainVerticle extends AbstractVerticle {
                 .setConfig(config)
                 .setWorker(true);
 
-        LOG.debug("pool size [{}]", options.getWorkerPoolSize());
-
         List<Future> deploymentFutures = new ArrayList<>();
         deploymentFutures.add(startVerticle(options, OwmImporterVerticle.class.getName()));
         deploymentFutures.add(startVerticle(options, CkanImporterVerticle.class.getName()));
         deploymentFutures.add(startVerticle(options, DataSenderVerticle.class.getName()));
-
-        deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
-        deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
-        deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
-        deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
         deploymentFutures.add(startVerticle(options, CsvDownloaderVerticle.class.getName()));
 
         return CompositeFuture.join(deploymentFutures);
@@ -325,6 +318,8 @@ public class MainVerticle extends AbstractVerticle {
                 } else if (request.getFrequencyInMinutes() < 1) {
                     response.put("message", "Frequency lower than 1 (frequencyInMinutes)");
                     context.response().setStatusCode(400);
+                } else if (request.getFetchType() == CkanFetchType.ID && request.getResourceId() != null && request.getHopsDataset() == null) {
+                    response.put("message", "FetchType ID requires hopsDataset");
                 } else {
                     writeJobToFile(jobFile, request.getPipeId());
 

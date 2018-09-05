@@ -71,8 +71,12 @@ public class CkanImporterVerticle extends AbstractVerticle {
     private void getCkanApiData(CkanFetchRequest request, boolean removeJobFromFile) {
         if (request.getFetchType().equals(CkanFetchType.URL)) {
             handleCkanUrlRequest(request, removeJobFromFile);
-        } else {
+        } else if(request.getResourceId() != null) {
             handleCkanResourceRequest(request, removeJobFromFile);
+        } else if(request.getPackageId() != null) {
+            handleCkanPackageRequest(request, removeJobFromFile);
+        } else {
+            LOG.warn("No resourceId or packageId provided for FetchType ID");
         }
     }
 
@@ -113,47 +117,19 @@ public class CkanImporterVerticle extends AbstractVerticle {
                                 LOG.debug("url : [{}]", url);
                                 LOG.debug("pipeId : [{}]", pId);
 
-                                /*getCsvFileFromUrl(url.replaceAll(" ", "%20"), baseFileName).setHandler(csvHandler -> {
-                                    if (csvHandler.succeeded()) {
-                                        JsonObject payload = new JsonObject().put("csv", csvHandler.result());
-
-                                        LOG.debug("pipeId : [{}]", pId);
-
-                                        // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
-                                        DataSendRequest dataSendRequest =
-                                                new DataSendRequest(
-                                                      pId,
-                                                      request.getHopsProjectId(),
-                                                      request.getHopsDataset(),
-                                                      DataType.CSV,
-                                                      baseFileName,
-                                                      payload.toString(),
-                                                      request.getUser(),
-                                                      request.getPassword(),
-                                                      createMetadata((JsonObject) resultObj, resource)
-                                                );
-
-                                        vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
-                                    } else {
-                                        LOG.error("CSV handling failed: {}", csvHandler.cause());
-                                    }
-                                });*/
-
                                 // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
                                 CSVDownloadRequest csvDownloadRequest =
                                         new CSVDownloadRequest(
-                                              pId,
-                                              request.getHopsProjectId(),
-                                              request.getHopsDataset(),
-                                              DataType.CSV,
-                                              baseFileName,
-                                              null,
-                                              request.getUser(),
-                                              request.getPassword(),
-                                              createMetadata((JsonObject) resultObj, resource)
+                                                pId,
+                                                request.getHopsProjectId(),
+                                                request.getHopsDataset(),
+                                                DataType.CSV,
+                                                baseFileName,
+                                                url,
+                                                request.getUser(),
+                                                request.getPassword(),
+                                                createMetadata((JsonObject) resultObj, resource)
                                         );
-
-                                csvDownloadRequest.setUrl(url);
 
                                 vertx.eventBus().send(Constants.MSG_DOWNLOAD_CSV, Json.encode(csvDownloadRequest));
                             }
@@ -163,6 +139,73 @@ public class CkanImporterVerticle extends AbstractVerticle {
                             countCSV++;
                         }
                     }
+                    LOG.debug("Found [{}] datasets with CSV", countCSV);
+                } catch (Exception e) {
+                    LOG.error("Exception thrown: {}", e.getMessage());
+                }
+            } else {
+                LOG.error("CKAN import failed: {}", ckanHandler.cause());
+            }
+
+            if (removeJobFromFile) {
+                removeJobFromFile(config().getString("tmpDir") + "/" + Constants.JOB_FILE_NAME, request.getPipeId());
+                LOG.debug("Pipe with ID [{}] done", request.getPipeId());
+            }
+        });
+    }
+
+    private void handleCkanPackageRequest(CkanFetchRequest request, boolean removeJobFromFile) {
+        String ckanUrl = request.getUrl() + "/api/3/action/package_show?id=" + request.getPackageId();
+        issueHttpRequest(ckanUrl).setHandler(ckanHandler -> {
+            if (ckanHandler.succeeded()) {
+                try {
+                    AtomicInteger fileCount = new AtomicInteger(0);
+                    Integer countCSV = 0;
+
+                    JsonObject ckanPackage = new JsonObject(ckanHandler.result()).getJsonObject("result");
+
+                    boolean containsCSV = false;
+
+                    for (Object resourceObj : ckanPackage.getJsonArray("resources")) {
+                        JsonObject resource = (JsonObject) resourceObj;
+
+                        String url = resource.getString("url");
+
+                        if (url != null && url.endsWith(".csv")) {
+
+                            containsCSV = true;
+
+                            String baseFileName = url.substring(url.lastIndexOf("/"), url.lastIndexOf("."));
+
+                            LOG.debug("baseFileName : [{}]", baseFileName);
+
+                            String pId = request.getPipeId() + fileCount.incrementAndGet();
+
+                            LOG.debug("url : [{}]", url);
+                            LOG.debug("pipeId : [{}]", pId);
+
+                            // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
+                            CSVDownloadRequest csvDownloadRequest =
+                                    new CSVDownloadRequest(
+                                            pId,
+                                            request.getHopsProjectId(),
+                                            request.getHopsDataset(),
+                                            DataType.CSV,
+                                            baseFileName,
+                                            url,
+                                            request.getUser(),
+                                            request.getPassword(),
+                                            createMetadata(ckanPackage, resource)
+                                    );
+
+                            vertx.eventBus().send(Constants.MSG_DOWNLOAD_CSV, Json.encode(csvDownloadRequest));
+                        }
+                    }
+
+                    if(containsCSV) {
+                        countCSV++;
+                    }
+
                     LOG.debug("Found [{}] datasets with CSV", countCSV);
                 } catch (Exception e) {
                     LOG.error("Exception thrown: {}", e.getMessage());
@@ -191,29 +234,22 @@ public class CkanImporterVerticle extends AbstractVerticle {
                         if (resourceUrl != null && resourceUrl.endsWith(".csv")) {
                             String baseFileName = resourceUrl.substring(resourceUrl.lastIndexOf("/"), resourceUrl.lastIndexOf("."));
 
-                            getCsvFileFromUrl(resourceUrl.replaceAll(" ", "%20"), baseFileName).setHandler(csvHandler -> {
-                                if (csvHandler.succeeded()) {
-                                    JsonObject payload = new JsonObject().put("csv", csvHandler.result());
+                            // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
+                            CSVDownloadRequest csvDownloadRequest =
+                                    new CSVDownloadRequest(
+                                            request.getPipeId(),
+                                            request.getHopsProjectId(),
+                                            request.getHopsDataset(),
+                                            DataType.CSV,
+                                            baseFileName,
+                                            resourceUrl,
+                                            request.getUser(),
+                                            request.getPassword(),
+                                            createMetadata(null, resource.getJsonObject("result"))
+                                    );
 
-                                    // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
-                                    DataSendRequest dataSendRequest =
-                                            new DataSendRequest(
-                                                    request.getPipeId(),
-                                                    request.getHopsProjectId(),
-                                                    request.getHopsDataset(),
-                                                    DataType.CSV,
-                                                    baseFileName,
-                                                    payload.toString(),
-                                                    request.getUser(),
-                                                    request.getPassword(),
-                                                    createMetadata(null, resource.getJsonObject("result"))
-                                            );
+                            vertx.eventBus().send(Constants.MSG_DOWNLOAD_CSV, Json.encode(csvDownloadRequest));
 
-                                    vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));
-                                } else {
-                                    LOG.error("CSV handling failed: {}", csvHandler.cause());
-                                }
-                            });
                         }
                     } else {
                         LOG.error("Resource with ID [{}] not found at [{}]", request.getResourceId(), ckanUrl);
@@ -267,30 +303,12 @@ public class CkanImporterVerticle extends AbstractVerticle {
         vertx.executeBlocking(httpFuture -> {
             File csvFile = new File(config().getString("tmpDir") + fileName);
 
-            /*ExecutorService executorService = Executors.newFixedThreadPool(1);
-            java.util.concurrent.Future<?> task = executorService.submit(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        FileUtils.copyURLToFile(new URL(url), csvFile, 10000, 10000);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            });*/
-
             try {
                 FileUtils.copyURLToFile(new URL(url), csvFile, 10000, 10000);
-                //task.get(120, TimeUnit.SECONDS);
                 String csvContent = FileUtils.readFileToString(csvFile, "UTF-8");
                 FileUtils.deleteQuietly(csvFile);
                 resultFuture.complete(csvContent);
-            } /*catch (InterruptedException | ExecutionException e) {
-                resultFuture.fail("Failed to download file: " + e.getMessage());
-            } catch (TimeoutException e) {
-                task.cancel(true);
-                resultFuture.fail("Failed to download file: " + e.getMessage());
-            } */catch (IOException e) {
+            } catch (IOException e) {
                 resultFuture.fail("Failed to download file: " + e.getMessage());
             }
         }, result -> {});
@@ -331,9 +349,9 @@ public class CkanImporterVerticle extends AbstractVerticle {
     private String createMetadata(JsonObject packageJson, JsonObject resourceJson) {
         JsonObject metadata = new JsonObject();
 
-        JsonObject dataset = new JsonObject();
-
         if(packageJson != null) {
+
+            JsonObject dataset = new JsonObject();
 
             if(packageJson.getString("title") == null) {
                 dataset.put("title", "");
@@ -352,9 +370,11 @@ public class CkanImporterVerticle extends AbstractVerticle {
             dataset.put("keywords", new JsonArray());
             dataset.put("themes", new JsonArray());
             dataset.putNull("catalog");
-        }
 
-        metadata.put("dataset", dataset);
+            metadata.put("dataset", dataset);
+        } else {
+            metadata.putNull("dataset");
+        }
 
         JsonObject distribution = new JsonObject();
 

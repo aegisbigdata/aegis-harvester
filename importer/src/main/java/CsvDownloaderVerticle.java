@@ -1,36 +1,23 @@
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.json.JsonArray;
-import model.*;
-import org.apache.commons.io.FileUtils;
+
 import org.apache.http.HttpResponse;
-import org.apache.http.Header;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpHead;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.TimeUnit;
-
-import io.vertx.circuitbreaker.CircuitBreaker;
-import io.vertx.circuitbreaker.CircuitBreakerOptions;
+import model.*;
 
 public class CsvDownloaderVerticle extends AbstractVerticle {
 
@@ -42,8 +29,6 @@ public class CsvDownloaderVerticle extends AbstractVerticle {
     public void start(Future<Void> future) {
         vertx.eventBus().consumer(Constants.MSG_DOWNLOAD_CSV, this::startDownload);
 
-        LOG.debug("CSV_DOWNLOADER Started");
-
         httpClient = HttpClients.createDefault();
         future.complete();
     }
@@ -52,6 +37,7 @@ public class CsvDownloaderVerticle extends AbstractVerticle {
         CSVDownloadRequest csvDownloadRequest = Json.decodeValue(message.body(), CSVDownloadRequest.class);
 
         LOG.debug("CSV_DOWNLOADER pID := [{}]", csvDownloadRequest.getPipeId());
+        LOG.debug("csv_downloader [{}]", csvDownloadRequest.toString());
 
         String baseFileName = csvDownloadRequest.getBaseFileName();
         String url = csvDownloadRequest.getUrl();
@@ -127,18 +113,12 @@ public class CsvDownloaderVerticle extends AbstractVerticle {
                     String body = EntityUtils.toString(response.getEntity());
                     status = response.getStatusLine().getStatusCode();
 
-                    // TODO status 302 not found check location header (https?)
                     if(status == 200) {
                         resultFuture.complete(body);
                     } else {
                         resultFuture.fail("Failed to download file: " + status);
                     }
                 }
-
-                /*FileUtils.copyURLToFile(new URL(url), csvFile, 10000, 10000);
-                String csvContent = FileUtils.readFileToString(csvFile, "UTF-8");
-                FileUtils.deleteQuietly(csvFile);
-                resultFuture.complete(csvContent);*/
             } catch (IOException e) {
                 resultFuture.fail("Failed to download file: " + e.getMessage());
             }

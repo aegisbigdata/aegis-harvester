@@ -8,6 +8,7 @@ public class CkanFetchRequest {
     private CkanFetchType fetchType;
     private String url;
     private String resourceId;
+    private String packageId;
 
     private Integer durationInHours;
     private Integer frequencyInMinutes;
@@ -61,6 +62,14 @@ public class CkanFetchRequest {
 
     public void setResourceId(String resourceId) {
         this.resourceId = resourceId;
+    }
+
+    public String getPackageId() {
+        return packageId;
+    }
+
+    public void setPackageId(String packageId) {
+        this.packageId = packageId;
     }
 
     public Integer getDurationInHours() {

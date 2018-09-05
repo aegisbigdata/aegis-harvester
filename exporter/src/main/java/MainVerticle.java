@@ -1,28 +1,17 @@
-import de.fokus.fraunhofer.hopsworks.adapter.HopsworksAdapter;
 import io.vertx.config.ConfigRetriever;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.json.JsonArray;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
-import java.net.URI;
-
-import java.io.IOException;
-
-import java.util.Iterator;
-
-import model.Constants;
-import model.UploadRequest;
+import model.*;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -75,22 +64,6 @@ public class MainVerticle extends AbstractVerticle {
         DeploymentOptions options = new DeploymentOptions()
                 .setConfig(config)
                 .setWorker(true);
-
-        vertx.deployVerticle(UploadVerticle.class.getName(), options, handler -> {
-            if (handler.succeeded()) {
-                LOG.info("Upload verticle successfully deployed");
-            } else {
-                future.fail("Failed to deploy upload verticle: " + handler.cause());
-            }
-        });
-
-        vertx.deployVerticle(UploadVerticle.class.getName(), options, handler -> {
-            if (handler.succeeded()) {
-                LOG.info("Upload verticle successfully deployed");
-            } else {
-                future.fail("Failed to deploy upload verticle: " + handler.cause());
-            }
-        });
 
         vertx.deployVerticle(UploadVerticle.class.getName(), options, handler -> {
             if (handler.succeeded()) {

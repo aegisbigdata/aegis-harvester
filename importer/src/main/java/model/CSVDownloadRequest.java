@@ -7,7 +7,6 @@ public class CSVDownloadRequest {
     private String hopsDataset;
     private DataType dataType;
     private String baseFileName;
-    private String payload;
 
     private String user;
     private String password;
@@ -21,18 +20,17 @@ public class CSVDownloadRequest {
 
     public CSVDownloadRequest() {}
 
-    public CSVDownloadRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String payload, String user, String password, String metadata) {
+    public CSVDownloadRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String url, String user, String password, String metadata) {
         this.pipeId = pipeId;
         this.hopsProjectId = hopsProjectId;
         this.hopsDataset = hopsDataset;
         this.dataType = dataType;
         this.baseFileName = baseFileName;
-        this.payload = payload;
         this.user = user;
         this.password = password;
         this.aggregate = false;
         this.metadata = metadata;
-        this.url = null;
+        this.url = url;
     }
 
     public String getUrl() {
@@ -83,14 +81,6 @@ public class CSVDownloadRequest {
         this.baseFileName = baseFileName;
     }
 
-    public String getPayload() {
-        return payload;
-    }
-
-    public void setPayload(String payload) {
-        this.payload = payload;
-    }
-
     public Boolean getAggregate() {
         return aggregate;
     }
@@ -131,7 +121,7 @@ public class CSVDownloadRequest {
                 ", hopsDataset='" + hopsDataset + '\'' +
                 ", dataType=" + dataType +
                 ", baseFileName='" + baseFileName + '\'' +
-                ", payload='" + payload + '\'' +
+                ", url='" + url + '\'' +
                 ", user='" + user + '\'' +
                 ", password='" + password + '\'' +
                 ", aggregate=" + aggregate + '\'' +

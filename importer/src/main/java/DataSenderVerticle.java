@@ -2,9 +2,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.DecodeException;
-import io.vertx.core.json.Json;
-import model.Constants;
-import model.DataSendRequest;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -16,6 +14,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+
+import model.Constants;
 
 public class DataSenderVerticle extends AbstractVerticle {
 

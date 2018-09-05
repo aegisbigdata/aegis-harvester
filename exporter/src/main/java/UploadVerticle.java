@@ -1,14 +1,12 @@
 import de.fokus.fraunhofer.hopsworks.adapter.HopsworksAdapter;
-import io.vertx.config.ConfigRetriever;
+
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.eventbus.Message;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,22 +16,17 @@ import java.nio.file.Paths;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.Header;
 
-import java.net.URI;
 
 import java.io.IOException;
 
 import java.util.Iterator;
 
-import model.Constants;
-import model.UploadRequest;
+import model.*;
 
 public class UploadVerticle extends AbstractVerticle {
 
@@ -43,7 +36,7 @@ public class UploadVerticle extends AbstractVerticle {
     public void start(Future<Void> future) {
         LOG.info("Launching UploadVerticle");
 
-        vertx.eventBus().consumer("msg.upload", this::handleUpload);
+        vertx.eventBus().consumer(Constants.MSG_UPLOAD, this::handleUpload);
 
         future.complete();
     }

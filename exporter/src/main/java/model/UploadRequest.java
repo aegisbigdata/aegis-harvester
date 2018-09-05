@@ -101,7 +101,7 @@ public class UploadRequest {
 
     @Override
     public String toString() {
-        return "WriteRequest{" +
+        return "UploadRequest{" +
                 "pipeId='" + pipeId + '\'' +
                 ", hopsDataset='" + hopsDataset + '\'' +
                 ", hopsProjectId=" + hopsProjectId +

@@ -71,8 +71,6 @@ public class CsvDownloaderVerticle extends AbstractVerticle {
         LOG.debug("Downloading file from [{}]", url);
 
         vertx.executeBlocking(httpFuture -> {
-            File csvFile = new File(config().getString("tmpDir") + fileName);
-
             try {
 
                 HttpClient httpClient = HttpClients.createDefault();

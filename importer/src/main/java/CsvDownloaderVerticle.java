@@ -74,6 +74,39 @@ public class CsvDownloaderVerticle extends AbstractVerticle {
             File csvFile = new File(config().getString("tmpDir") + fileName);
 
             try {
+
+                HttpClient httpClient = HttpClients.createDefault();
+
+                LOG.debug("Issue GET Request to [{}]", url);
+                HttpGet httpGet = new HttpGet(url);
+
+                HttpResponse response = httpClient.execute(httpGet);
+                String body = EntityUtils.toString(response.getEntity());
+                int status = response.getStatusLine().getStatusCode();
+
+                if(status == 200) {
+                    resultFuture.complete(body);
+                } else {
+                    resultFuture.fail("Failed to download file: " + status);
+                }
+            } catch (IOException e) {
+                resultFuture.fail("Failed to download file: " + e.getMessage());
+            }
+        }, result -> {
+        });
+
+        return resultFuture;
+    }
+
+    /* Checks for fileSize in Content-Length header field
+    private Future<String> getCsvFileFromUrl(String url, String fileName) {
+        Future<String> resultFuture = Future.future();
+        LOG.debug("Downloading file from [{}]", url);
+
+        vertx.executeBlocking(httpFuture -> {
+            File csvFile = new File(config().getString("tmpDir") + fileName);
+
+            try {
                 String url_ = url.replaceAll(" ", "%20");
 
                 HttpClient httpClient = HttpClients.createDefault();
@@ -126,5 +159,5 @@ public class CsvDownloaderVerticle extends AbstractVerticle {
         });
 
         return resultFuture;
-    }
+    } */
 }

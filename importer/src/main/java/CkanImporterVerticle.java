@@ -88,8 +88,6 @@ public class CkanImporterVerticle extends AbstractVerticle {
                     Integer countCSV = 0;
                     for (Object resultObj : new JsonObject(ckanHandler.result()).getJsonObject("result").getJsonArray("results")) {
 
-                        boolean containsCSV = false;
-
                         for (Object resourceObj : (((JsonObject) resultObj).getJsonArray("resources"))) {
                             JsonObject resource = (JsonObject) resourceObj;
 
@@ -99,22 +97,19 @@ public class CkanImporterVerticle extends AbstractVerticle {
                             //if (url != null && (format != null && format.equals("CSV") || url.endsWith(".csv"))) {
                             if (url != null && url.endsWith(".csv")) {
 
-                                containsCSV = true;
+                                String pId = request.getPipeId() + fileCount.incrementAndGet();
+                                countCSV++;
 
                                 String baseFileName;
 
                                 if(url.endsWith(".csv")) {
                                     baseFileName = url.substring(url.lastIndexOf("/"), url.lastIndexOf("."));
                                 } else {
-                                    LOG.debug("found csv file without csv ending");
                                     baseFileName = url.substring(url.lastIndexOf("/"), url.length()-1);
                                 }
 
-                                LOG.debug("baseFileName : [{}]", baseFileName);
-
-                                String pId = request.getPipeId() + fileCount.incrementAndGet();
-
                                 LOG.debug("url : [{}]", url);
+                                LOG.debug("baseFileName : [{}]", baseFileName);
                                 LOG.debug("pipeId : [{}]", pId);
 
                                 // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
@@ -132,14 +127,11 @@ public class CkanImporterVerticle extends AbstractVerticle {
                                         );
 
                                 vertx.eventBus().send(Constants.MSG_DOWNLOAD_CSV, Json.encode(csvDownloadRequest));
+
                             }
                         }
-
-                        if(containsCSV) {
-                            countCSV++;
-                        }
                     }
-                    LOG.debug("Found [{}] datasets with CSV", countCSV);
+                    LOG.debug("Found [{}] CSV files", countCSV);
                 } catch (Exception e) {
                     LOG.error("Exception thrown: {}", e.getMessage());
                 }

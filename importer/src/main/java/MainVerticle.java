@@ -403,6 +403,7 @@ public class MainVerticle extends AbstractVerticle {
             JsonArray payload = request.getJsonArray("payload");
             String user = request.getString("user");
             String password = request.getString("password");
+            String targetFileName = request.getString("fileName");
 
             if (pipeId == null) {
                 response.put("message", "Please provide a pipe ID (pipeId)");
@@ -410,7 +411,7 @@ public class MainVerticle extends AbstractVerticle {
             } else {
                 payload.forEach(obj -> {
                     DataSendRequest sendRequest
-                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, "event", obj.toString(), user, password, "{}", null);
+                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, "event", obj.toString(), user, password, "{}", targetFileName);
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
@@ -507,7 +508,7 @@ public class MainVerticle extends AbstractVerticle {
     private void removeJobFromFile(String filePath, String jobId) {
         vertx.fileSystem().readFile(filePath, readHandler -> {
             if (readHandler.succeeded()) {
-                String content = readHandler.result().toString().replace(jobId + "\r\n", "");
+                String content = readHandler.result().toString().replace(jobId + "\n", "");
                 vertx.fileSystem().writeFile(filePath, Buffer.buffer(content), writeHandler -> {
                     if (writeHandler.failed())
                         LOG.warn("Could not delete job [{}] from file [{}]: {}", jobId, filePath, writeHandler.cause());

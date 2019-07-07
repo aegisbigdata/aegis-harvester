@@ -2,8 +2,8 @@
   "http.port" : 8126,
   "aegis": {
     "url": "http://bbc6.sics.se:8080/hopsworks-api/api",
-    "hopsUserName": "admin@kth.se",
-    "hopsPassword": "admin"
+    "hopsUserName": "",
+    "hopsPassword": ""
   },
   "aegis-metadata-store": {
     "url": "http://aegis-metadata.fokus.fraunhofer.de/api"

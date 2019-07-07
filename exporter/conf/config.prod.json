@@ -3,8 +3,8 @@
   "tmpDir" : "/tmp",
   "aegis": {
     "url": "https://bbc6.sics.se:8181/hopsworks-api/api",
-    "hopsUserName": "admin@kth.se",
-    "hopsPassword": "213456789"
+    "hopsUserName": "",
+    "hopsPassword": ""
   },
   "metadata-store": {
     "url": "http://localhost"

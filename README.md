@@ -1,4 +1,4 @@
-# Weather Harvester Demo
+# AEGIS Harvester
 
 A pipeline consisting of four micro services performing the following steps:
 1. Fetch data from [OpenWeatherMap](https://openweathermap.org/)

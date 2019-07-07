@@ -312,8 +312,8 @@ components:
                "value" : "123456",
                "durationInHours" : 3,
                "frequencyInMinutes" : 10,
-               "user" : "admin@kth.se", # optional
-               "password" : "admin"     # optional
+               "user" : "", # optional
+               "password" : ""     # optional
              }
 
     ckanSearchImportExample:
@@ -326,8 +326,8 @@ components:
                "url" : "https://my-ckan-source.com/api/3/action/package_search?...",
                "durationInHours" : 0,
                "frequencyInMinutes" : 10,
-               "user" : "admin@kth.se", # optional
-               "password" : "admin"     # optional
+               "user" : "", # optional
+               "password" : ""     # optional
               }
 
     ckanResourceIdImportExample:
@@ -341,8 +341,8 @@ components:
                "resourceId" : "sampleId",
                "durationInHours" : 0,
                "frequencyInMinutes" : 10,
-               "user" : "admin@kth.se", # optional
-               "password" : "admin"     # optional
+               "user" : "", # optional
+               "password" : ""     # optional
               }
 
     csvUploadExample:
@@ -388,6 +388,6 @@ components:
                     "retrieved_date" : "2017-12-18T19:47:24.751Z"
                   }
                ],
-               "user" : "admin@kth.se", # optional
-               "password" : "admin"     # optional
+               "user" : "", # optional
+               "password" : ""     # optional
              }

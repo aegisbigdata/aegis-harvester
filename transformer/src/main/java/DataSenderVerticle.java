@@ -46,8 +46,9 @@ public class DataSenderVerticle extends AbstractVerticle {
         json.put("csvHeaders", request.getCsvHeaders());
         json.put("payload", request.getCsvPayload());
         json.put("aggregate", request.getAggregate());
-        json.put("user", request.getUser());
-        json.put("password", request.getPassword());
+        json.put("hopsUserName", request.getHopsUserName());
+        json.put("hopsPassword", request.getHopsPassword());
+        json.put("targetFileName", request.getTargetFileName());
         json.put("metadata", request.getMetadata());
 
         Future<Void> future = Future.future();

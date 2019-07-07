@@ -11,11 +11,12 @@ public class UploadRequest {
     private String url_metadata;
     private String user;
     private String password;
+    private String targetFileName;
 
     public UploadRequest() {
     }
 
-    public UploadRequest(String pipeId, Integer hopsProjectId, String hopsDataset, String filePath, String metadata, String url, String url_metadata, String user, String password) {
+    public UploadRequest(String pipeId, Integer hopsProjectId, String hopsDataset, String filePath, String metadata, String url, String url_metadata, String user, String password, String targetFileName) {
         this.pipeId = pipeId;
         this.hopsProjectId = hopsProjectId;
         this.hopsDataset = hopsDataset;
@@ -25,6 +26,7 @@ public class UploadRequest {
         this.url_metadata = url_metadata;
         this.user = user;
         this.password = password;
+        this.targetFileName = targetFileName;
     }
 
     public String getPipeId() {
@@ -97,6 +99,14 @@ public class UploadRequest {
 
     public void setMetadata(String metadata) {
         this.metadata = metadata;
+    }
+
+    public String getTargetFileName() {
+        return targetFileName;
+    }
+
+    public void setTargetFileName(String targetFileName) {
+        this.targetFileName = targetFileName;
     }
 
     @Override

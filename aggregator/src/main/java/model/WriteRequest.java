@@ -14,13 +14,17 @@ public class WriteRequest {
 
     private String metadata;
 
+    private String targetFileName;
+
+
+
     // entire contents of request are written to file and exported when set to false
     private Boolean aggregate;
 
     public WriteRequest() {
     }
 
-    public WriteRequest(String pipeId, Integer hopsProjectId, String hopsDataset, String baseFileName, String csvHeaders, String csvData, Boolean aggregate, String user, String password, String metadata) {
+    public WriteRequest(String pipeId, Integer hopsProjectId, String hopsDataset, String baseFileName, String csvHeaders, String csvData, Boolean aggregate, String user, String password, String metadata, String targetFileName) {
         this.pipeId = pipeId;
         this.hopsProjectId = hopsProjectId;
         this.hopsDataset = hopsDataset;
@@ -31,6 +35,7 @@ public class WriteRequest {
         this.user = user;
         this.password = password;
         this.metadata = metadata;
+        this.targetFileName = targetFileName;
     }
 
     public String getPipeId() {
@@ -89,19 +94,19 @@ public class WriteRequest {
         this.aggregate = aggregate;
     }
 
-    public String getUser() {
+    public String getHopsUserName() {
         return user;
     }
 
-    public void setUser(String user) {
+    public void setHopsUserName(String user) {
         this.user = user;
     }
 
-    public String getPassword() {
+    public String getHopsPassword() {
         return password;
     }
 
-    public void setPassword(String password) {
+    public void setHopsPassword(String password) {
         this.password = password;
     }
 
@@ -112,6 +117,15 @@ public class WriteRequest {
     public void setMetadata(String metadata) {
         this.metadata = metadata;
     }
+
+    public String getTargetFileName() {
+        return targetFileName;
+    }
+
+    public void setTargetFileName(String targetFileName) {
+        this.targetFileName = targetFileName;
+    }
+
 
     @Override
     public String toString() {

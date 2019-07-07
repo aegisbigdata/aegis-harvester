@@ -6,7 +6,7 @@
 
     <parent>
         <groupId>de.fhg.fokus.viaduct.consus.aegis</groupId>
-        <artifactId>weatherdemo</artifactId>
+        <artifactId>aegis-harvester</artifactId>
         <version>0.1</version>
     </parent>
 

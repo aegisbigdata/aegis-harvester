@@ -116,8 +116,10 @@ public class AggregationVerticle extends AbstractVerticle {
         message.put("hopsProjectId", request.getHopsProjectId());
         message.put("hopsDataset", request.getHopsDataset());
         message.put("payload", fileNames.get(request.getPipeId()));
-        message.put("user", request.getUser());
-        message.put("password", request.getPassword());
+        message.put("hopsUserName", request.getHopsUserName());
+        message.put("hopsPassword", request.getHopsPassword());
+        message.put("baseFileName", request.getBaseFileName());
+        message.put("targetFileName", request.getTargetFileName());
         message.put("metadata", request.getMetadata());
 
         vertx.eventBus().send(Constants.MSG_SEND, Json.encode(message));

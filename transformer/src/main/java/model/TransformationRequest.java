@@ -9,10 +9,13 @@ public class TransformationRequest {
     private String baseFileName;
     private String payload;
 
-    private String user;
-    private String password;
+    private String hopsUserName;
+    private String hopsPassword;
 
     private String metadata;
+
+
+    private String targetFileName;
 
     private boolean aggregate;
 
@@ -72,20 +75,20 @@ public class TransformationRequest {
         this.aggregate = aggregate;
     }
 
-    public String getUser() {
-        return user;
+    public String getHopsUserName() {
+        return hopsUserName;
     }
 
-    public void setUser(String user) {
-        this.user = user;
+    public void setHopsUserName(String hopsUserName) {
+        this.hopsUserName = hopsUserName;
     }
 
-    public String getPassword() {
-        return password;
+    public String getHopsPassword() {
+        return hopsPassword;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setHopsPassword(String hopsPassword) {
+        this.hopsPassword = hopsPassword;
     }
 
     public String getMetadata() {
@@ -96,6 +99,15 @@ public class TransformationRequest {
         this.metadata = metadata;
     }
 
+    public String getTargetFileName() {
+        return targetFileName;
+    }
+
+    public void setTargetFileName(String targetFileName) {
+        this.targetFileName = targetFileName;
+    }
+
+
     @Override
     public String toString() {
         return "TransformationRequest{" +
@@ -105,8 +117,8 @@ public class TransformationRequest {
                 ", dataType=" + dataType +
                 ", baseFileName='" + baseFileName + '\'' +
                 ", payload='" + payload + '\'' +
-                ", user='" + user + '\'' +
-                ", password='" + password + '\'' +
+                ", hopsUserName='" + hopsUserName + '\'' +
+                ", hopsPassword='" + hopsPassword + '\'' +
                 ", aggregate=" + aggregate + '\'' +
                 ", metadata=" + metadata +
                 '}';

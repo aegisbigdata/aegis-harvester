@@ -1,0 +1,7 @@
+{
+  "http.port" : 8080,
+  "target.host" : "aggregator",
+  "target.port" : 8080,
+  "target.endpoint" : "/aggregate",
+  "csv.stripHeader" : true
+}

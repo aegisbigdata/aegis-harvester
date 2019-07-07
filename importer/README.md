@@ -36,7 +36,7 @@ To trigger the fetching of data a `POST` request must be sent to
 
     {url}/owm
 
-containing a JSON body with the data shown in the table below. All values are mandatory, except user and password.
+containing a JSON body with the data shown in the table below. All values are mandatory, except hopsUserName and hopsPassword.
 
 |Key|Description|
 |:--- |:---|
@@ -47,8 +47,8 @@ containing a JSON body with the data shown in the table below. All values are ma
 |url| Either the bbox coordinates or a location ID |
 |durationInHours| How long the pipeline should run for, in hours. A url < 1 will make the pipeline run exactly once. |
 |frequencyInMinutes| The interval at which data should be fetched, in minutes. A url < 1 will make the pipeline not run. |
-|user| The user account for hopsworks. |
-|password| The user password for hopsworks. |
+|hopsUserName| The hopsUserName account for hopsworks. |
+|hopsPassword| The hopsUserName hopsPassword for hopsworks. |
 
 A frequency higher than the duration (for durations > 0) is not allowed.
 
@@ -58,7 +58,7 @@ To trigger the fetching of data a `POST` request must be sent to
 
     {url}/ckan
 
-containing a JSON body with the data shown in the table below. All values are mandatory, except user and password.
+containing a JSON body with the data shown in the table below. All values are mandatory, except hopsUserName and hopsPassword.
 
 |Key|Description|
 |:--- |:---|
@@ -68,8 +68,8 @@ containing a JSON body with the data shown in the table below. All values are ma
 |url| The full ckan URL to fetch API data from |
 |durationInHours| How long the pipeline should run for, in hours. A url < 1 will make the pipeline run exactly once. |
 |frequencyInMinutes| The interval at which data should be fetched, in minutes. A url < 1 will make the pipeline not run. |
-|user| The user account for hopsworks. |
-|password| The user password for hopsworks. |
+|hopsUserName| The hopsUserName account for hopsworks. |
+|hopsPassword| The hopsUserName hopsPassword for hopsworks. |
 
 A frequency higher than the duration (for durations > 0) is not allowed.
 
@@ -79,7 +79,7 @@ In order to push weather data from another source a `POST` request must be sent 
 
     {url}/upload
 
-containing multipart/form-data with key-url pairs containing the data shown in the table below. All values are mandatory, except user and password.
+containing multipart/form-data with key-url pairs containing the data shown in the table below. All values are mandatory, except hopsUserName and hopsPassword.
 
 |Key|Description|
 |:--- |:---|
@@ -88,8 +88,8 @@ containing multipart/form-data with key-url pairs containing the data shown in t
 |hopsDataset| The dataset in hopsworks to upload the resulting CSV file to |
 |upload| Path to a local file |
 |mapping| Instructions for transforming csv data. See below for a more thorough explanation |
-|user| The user account for hopsworks. |
-|password| The user password for hopsworks. |
+|hopsUserName| The hopsUserName account for hopsworks. |
+|hopsPassword| The hopsUserName hopsPassword for hopsworks. |
 
 ##### Transform CSV
 
@@ -153,7 +153,7 @@ To trigger the fetching of data a `POST` request must be sent to
 
     {url}/event
 
-containing a JSON body with the data shown in the table below. All values are mandatory, except user and password.
+containing a JSON body with the data shown in the table below. All values are mandatory, except hopsUserName and hopsPassword.
 
 |Key|Description|
 |:--- |:---|
@@ -161,8 +161,8 @@ containing a JSON body with the data shown in the table below. All values are ma
 |hopsProjectId| The project ID in hopsworks in which the hopsDataset resides |
 |hopsDataset| The dataset in hopsworks to upload the resulting CSV file to |
 |url| JSON as specified in the `openapi.yaml` file |
-|user| The user account for hopsworks. |
-|password| The user password for hopsworks. |
+|hopsUserName| The hopsUserName account for hopsworks. |
+|hopsPassword| The hopsUserName hopsPassword for hopsworks. |
 
 A frequency higher than the duration (for durations > 0) is not allowed.
 

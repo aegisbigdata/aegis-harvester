@@ -6,13 +6,13 @@ ENV VERTICLE_FILE importer-fat.jar
 ENV VERTICLE_HOME /usr/verticles
 ENV LOG_DIR /log
 
-EXPOSE 8123
+EXPOSE 8080
 
 RUN addgroup -S vertx && adduser -S -g vertx vertx
 
 # Copy your fat jar to the container
 COPY target/$VERTICLE_FILE $VERTICLE_HOME/
-COPY conf/config.json $VERTICLE_HOME/
+COPY conf/config.prod.json $VERTICLE_HOME/config.json
 
 RUN chown -R vertx $VERTICLE_HOME
 RUN chmod -R g+w $VERTICLE_HOME

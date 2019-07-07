@@ -1,0 +1,54 @@
+version: '2'
+
+services:
+  importer:
+    build: importer
+    ports:
+     - "8123:8123"
+    networks:
+      aegis:
+        ipv4_address: 10.5.0.2
+    volumes:
+      - log-volume:/log
+  transformer:
+    build: transformer
+    ports:
+     - "8124:8124"
+    networks:
+      aegis:
+        ipv4_address: 10.5.0.3
+    volumes_from:
+      - importer:rw
+  aggregator:
+    build: aggregator
+    ports:
+     - "8125:8125"
+    networks:
+      aegis:
+        ipv4_address: 10.5.0.4
+    volumes:
+      - aggregator-volume:/aggregated
+    volumes_from:
+      - importer:rw
+  exporter:
+    build: exporter
+    ports:
+     - "8126:8126"
+    networks:
+      aegis:
+        ipv4_address: 10.5.0.5
+    volumes_from:
+      - aggregator:rw
+      - importer:rw
+
+volumes:
+  log-volume:
+  aggregator-volume:
+
+networks:
+  aegis:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+          gateway: 10.5.0.1

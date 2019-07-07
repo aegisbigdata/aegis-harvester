@@ -280,8 +280,13 @@ public class UploadVerticle extends AbstractVerticle {
                     dataset = hopsDataset;
                 }
 
+                String targetFileName = request.getTargetFileName();
                 HopsworksAdapter hopsworksAdapter = new HopsworksAdapter(email, password, url);
-                hopsworksAdapter.actionUploadFile(hopsProjectId.toString(), "upload/" + dataset, filePath);
+                if(targetFileName != null) {
+                    hopsworksAdapter.actionUploadFile(hopsProjectId.toString(), "upload/" + dataset, filePath, targetFileName);
+                } else {
+                    hopsworksAdapter.actionUploadFile(hopsProjectId.toString(), "upload/" + dataset, filePath);
+                }
 
                 LOG.info("Uploaded file [{}] to hopsworks with pipeId [{}]", filePath, pipeId);
 
@@ -290,18 +295,20 @@ public class UploadVerticle extends AbstractVerticle {
                                 LOG.warn("Failed to clean up file [{}] : ", filePath, deleteHandler.cause());
                         });
 
-                if(!metadataJson.getJsonObject("distribution").equals("{}")) {
-                    boolean success = uploadMetadata(filePath, url, hopsProjectId, dataset, email, password, url_metadata, metadataJson);
-
-                    if(success) {
-                        LOG.debug("Successfully uploaded metadata");
-                        future.complete();
-                    } else {
-                        future.fail("Error when uploading metadata");
-                    }
-                } else {
-                    future.complete();
-                }
+                future.complete();
+//
+//                if(!metadataJson.getJsonObject("distribution").equals("{}")) {
+//                    boolean success = uploadMetadata(filePath, url, hopsProjectId, dataset, email, password, url_metadata, metadataJson);
+//
+//                    if(success) {
+//                        LOG.debug("Successfully uploaded metadata");
+//                        future.complete();
+//                    } else {
+//                        future.fail("Error when uploading metadata");
+//                    }
+//                } else {
+//                    future.complete();
+//                }
             } else {
                 future.fail("File not found: " + filePath);
             }

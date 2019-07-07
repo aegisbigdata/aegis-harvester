@@ -9,27 +9,31 @@ public class DataSendRequest {
     private String baseFileName;
     private String payload;
 
-    private String user;
-    private String password;
+    private String hopsUserName;
+    private String hopsPassword;
 
     private String metadata;
+
+    private String targetFileName;
+
 
     // entire contents of request are written to file and exported when set to false
     private Boolean aggregate;
 
     public DataSendRequest() {}
 
-    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String payload, String user, String password, String metadata) {
+    public DataSendRequest(String pipeId, Integer hopsProjectId, String hopsDataset, DataType dataType, String baseFileName, String payload, String hopsUserName, String hopsPassword, String metadata, String targetFileName) {
         this.pipeId = pipeId;
         this.hopsProjectId = hopsProjectId;
         this.hopsDataset = hopsDataset;
         this.dataType = dataType;
         this.baseFileName = baseFileName;
         this.payload = payload;
-        this.user = user;
-        this.password = password;
+        this.hopsUserName = hopsUserName;
+        this.hopsPassword = hopsPassword;
         this.aggregate = false;
         this.metadata = metadata;
+        this.targetFileName = targetFileName;
     }
 
     public String getPipeId() {
@@ -88,20 +92,20 @@ public class DataSendRequest {
         this.aggregate = aggregate;
     }
 
-    public String getUser() {
-        return user;
+    public String getHopsUserName() {
+        return hopsUserName;
     }
 
-    public void setUser(String user) {
-        this.user = user;
+    public void setHopsUserName(String hopsUserName) {
+        this.hopsUserName = hopsUserName;
     }
 
-    public String getPassword() {
-        return password;
+    public String getHopsPassword() {
+        return hopsPassword;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setHopsPassword(String hopsPassword) {
+        this.hopsPassword = hopsPassword;
     }
 
     public String getMetadata() {
@@ -112,6 +116,15 @@ public class DataSendRequest {
         this.metadata = metadata;
     }
 
+    public String getTargetFileName() {
+        return targetFileName;
+    }
+
+    public void setTargetFileName(String targetFileName) {
+        this.targetFileName = targetFileName;
+    }
+
+
     @Override
     public String toString() {
         return "DataSendRequest{" +
@@ -121,8 +134,8 @@ public class DataSendRequest {
                 ", dataType=" + dataType +
                 ", baseFileName='" + baseFileName + '\'' +
                 ", payload='" + payload + '\'' +
-                ", user='" + user + '\'' +
-                ", password='" + password + '\'' +
+                ", hopsUserName='" + hopsUserName + '\'' +
+                ", hopsPassword='" + hopsPassword + '\'' +
                 ", aggregate=" + aggregate + '\'' +
                 ", metadata=" + metadata +
                 '}';

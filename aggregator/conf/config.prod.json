@@ -1,0 +1,8 @@
+{
+  "http.port" : 8080,
+  "target.host" : "exporter",
+  "target.port" : 8080,
+  "target.endpoint" : "/export",
+  "fileDir" : "/tmp",
+  "frequencyInMinutes" : 3
+}

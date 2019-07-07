@@ -121,7 +121,7 @@ public class MainVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
         router.route().handler(CorsHandler.create("*").allowedHeaders(allowedHeaders).allowedMethods(allowedMethods));
-        router.route().handler(BodyHandler.create().setUploadsDirectory(config.getString("tmpDir")));
+        router.route().handler(BodyHandler.create().setUploadsDirectory(config.getString("tmpDir")).setDeleteUploadedFilesOnEnd(true));
         router.get("/").handler(this::welcomeHandler);
         router.get("/running").handler(this::runningJobshandler);
         router.get("/state").handler(this::stateHandler);
@@ -352,15 +352,20 @@ public class MainVerticle extends AbstractVerticle {
                 String pipeId = attributes.get(KEY_PIPE_ID);
                 Integer hopsProjectId = Integer.valueOf(attributes.get(KEY_HOPS_PROJECT_ID));
                 String hopsDataset = attributes.get(KEY_HOPS_DATASET);
-                JsonObject csvMapping = new JsonObject(attributes.get("mapping"));
-                String user = attributes.get("user");
-                String password = attributes.get("password");
+                String user = attributes.get("hopsUserName");
+                String password = attributes.get("hopsPassword");
+                String targetFileName = attributes.get("fileName");
+                JsonObject csvMapping = null;
+                if(attributes.contains("mapping")) {
+                    csvMapping = new JsonObject(attributes.get("mapping"));
+                }
+
 
                 if (pipeId != null && !runningJobs.contains(pipeId)) {
                     if (hopsDataset != null && !hopsDataset.isEmpty()) {
 
                         writeJobToFile(jobFile, pipeId);
-                        handleCsvFiles(pipeId, hopsProjectId, hopsDataset, context.fileUploads(), csvMapping, user, password);
+                        handleCsvFiles(pipeId, hopsProjectId, hopsDataset, context.fileUploads(), csvMapping, user, password, targetFileName);
                         removeJobFromFile(jobFile, pipeId);
 
                         context.response().setStatusCode(202);
@@ -375,9 +380,11 @@ public class MainVerticle extends AbstractVerticle {
             } catch (NumberFormatException e) {
                 response.put("message", "HopsProjectID provided is not an Integer");
                 context.response().setStatusCode(400);
+                context.response().end(response.encode());
             } catch (DecodeException e) {
                 response.put("message", "Invalid mapping script provided");
                 context.response().setStatusCode(400);
+                context.response().end(response.encode());
             }
 
             context.response().end(response.encode());
@@ -403,7 +410,7 @@ public class MainVerticle extends AbstractVerticle {
             } else {
                 payload.forEach(obj -> {
                     DataSendRequest sendRequest
-                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, "event", obj.toString(), user, password, "{}");
+                            = new DataSendRequest(pipeId, hopsProjectId, hopsDataset, DataType.EVENT, "event", obj.toString(), user, password, "{}", null);
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
@@ -419,7 +426,7 @@ public class MainVerticle extends AbstractVerticle {
         context.response().end(response.encode());
     }
 
-    private void handleCsvFiles(String pipeId, Integer hopsProjectId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript, String user, String password) {
+    private void handleCsvFiles(String pipeId, Integer hopsProjectId, String hopsFolder, Set<FileUpload> files, JsonObject mappingScript, String user, String password, String targetFileName) {
 
         AtomicInteger fileCount = new AtomicInteger(0);
         for (FileUpload file : files) {
@@ -434,7 +441,7 @@ public class MainVerticle extends AbstractVerticle {
 
                     // when uploading multiple files with the same pipeId, their file names will be overwritten in the aggregator
                     DataSendRequest sendRequest
-                            = new DataSendRequest(pipeId + fileCount.incrementAndGet(), hopsProjectId, hopsFolder, DataType.CSV, "local", payload.toString(), user, password, "{}");
+                            = new DataSendRequest(pipeId + fileCount.incrementAndGet(), hopsProjectId, hopsFolder, DataType.CSV, "local", payload.toString(), user, password, "{}", targetFileName);
                     LOG.debug("Sending {}", sendRequest.toString());
 
                     vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(sendRequest));
@@ -500,7 +507,7 @@ public class MainVerticle extends AbstractVerticle {
     private void removeJobFromFile(String filePath, String jobId) {
         vertx.fileSystem().readFile(filePath, readHandler -> {
             if (readHandler.succeeded()) {
-                String content = readHandler.result().toString().replace(jobId + "\n", "");
+                String content = readHandler.result().toString().replace(jobId + "\r\n", "");
                 vertx.fileSystem().writeFile(filePath, Buffer.buffer(content), writeHandler -> {
                     if (writeHandler.failed())
                         LOG.warn("Could not delete job [{}] from file [{}]: {}", jobId, filePath, writeHandler.cause());

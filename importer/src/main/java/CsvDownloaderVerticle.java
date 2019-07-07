@@ -56,7 +56,8 @@ public class CsvDownloaderVerticle extends AbstractVerticle {
                               payload.toString(),
                               csvDownloadRequest.getUser(),
                               csvDownloadRequest.getPassword(),
-                              csvDownloadRequest.getMetadata()
+                              csvDownloadRequest.getMetadata(),
+                              null
                         );
 
                 vertx.eventBus().send(Constants.MSG_SEND_DATA, Json.encode(dataSendRequest));

@@ -151,7 +151,7 @@ public class MainVerticle extends AbstractVerticle {
                     .end();
 
         } catch (DecodeException e) {
-            LOG.debug("Invalid request received");
+            LOG.debug(e.getMessage());
             context.response()
                     .setStatusCode(400)
                     .end("Invalid JSON provided");

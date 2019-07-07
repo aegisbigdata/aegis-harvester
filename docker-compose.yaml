@@ -1,54 +1,48 @@
-version: '2'
+version: '3.0'
 
 services:
   importer:
-    build: importer
+    image: aegisbigdata/harvester-importer
+    logging:
+      options:
+        max-size: "1g"
     ports:
-     - "8123:8123"
-    networks:
-      aegis:
-        ipv4_address: 10.5.0.2
+      - "8080:8080"
     volumes:
       - log-volume:/log
+      - tmp-volume:/tmp
   transformer:
-    build: transformer
-    ports:
-     - "8124:8124"
-    networks:
-      aegis:
-        ipv4_address: 10.5.0.3
-    volumes_from:
-      - importer:rw
+    image: aegisbigdata/harvester-transformer
+    logging:
+      options:
+        max-size: "1g"
   aggregator:
-    build: aggregator
-    ports:
-     - "8125:8125"
-    networks:
-      aegis:
-        ipv4_address: 10.5.0.4
+    image: aegisbigdata/harvester-aggregator
+    logging:
+      options:
+        max-size: "1g"
     volumes:
-      - aggregator-volume:/aggregated
-    volumes_from:
-      - importer:rw
+      - log-volume:/log
+      - tmp-volume:/tmp
   exporter:
-    build: exporter
+    image: aegisbigdata/harvester-exporter
+    logging:
+      options:
+        max-size: "1g"
+    volumes:
+      - log-volume:/log
+      - tmp-volume:/tmp
+  harvester-ui:
+    image: aegisbigdata/harvester-ui:latest
+    logging:
+      options:
+        max-size: "1g"
+    container_name: harvester-ui
     ports:
-     - "8126:8126"
-    networks:
-      aegis:
-        ipv4_address: 10.5.0.5
-    volumes_from:
-      - aggregator:rw
-      - importer:rw
+      - 8081:8080
 
 volumes:
   log-volume:
+  tmp-volume:
   aggregator-volume:
 
-networks:
-  aegis:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.5.0.0/16
-          gateway: 10.5.0.1

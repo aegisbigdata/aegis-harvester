@@ -110,6 +110,8 @@ public class MainVerticle extends AbstractVerticle {
       String metadata = message.getString("metadata");
 
       String hopsDataset = message.getString("hopsDataset");
+      String targetFileName = message.getString("targetFileName");
+
 
       LOG.info("Received request with pipeId [{}]", pipeId);
 
@@ -119,16 +121,16 @@ public class MainVerticle extends AbstractVerticle {
       String email;
       String password;
 
-      if(message.getString("user") != null && message.getString("password") != null) {
-          email = message.getString("user");
-          password = message.getString("password");
+      if(message.getString("hopsUserName") != null && message.getString("hopsPassword") != null) {
+          email = message.getString("hopsUserName");
+          password = message.getString("hopsPassword");
       } else {
           email = config.getJsonObject("aegis").getString("user");
           password = config.getJsonObject("aegis").getString("password");
       }
 
       UploadRequest request
-              = new UploadRequest(pipeId, hopsProjectId, hopsDataset, filePath, metadata, url, url_metadata, email, password);
+              = new UploadRequest(pipeId, hopsProjectId, hopsDataset, filePath, metadata, url, url_metadata, email, password, targetFileName);
       vertx.eventBus().send(Constants.MSG_UPLOAD, Json.encode(request));
 
       context.response()

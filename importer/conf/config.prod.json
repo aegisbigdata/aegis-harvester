@@ -1,0 +1,9 @@
+{
+  "http.port" : 8080,
+  "tmpDir" : "/tmp",
+  "logDir" : "/log",
+  "target.host" : "transformer",
+  "target.port" : 8080,
+  "target.endpoint" : "/transform",
+  "owmApiKey": ""
+}
